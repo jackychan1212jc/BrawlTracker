@@ -447,12 +447,12 @@ def pro_dashboard(tag: str = ""):
     <html lang="zh-TW">
     <head>
         <meta charset="UTF-8">
-        <title>Brawl Tactics Dashboard</title>
+        <title>Brawl Tracker</title>
         <style>
             :root { --theme-color: #00FFAA; }
             
-            /* 調整 padding 以容納上方的導航列 */
-            body { padding: 110px 8vw 40px 8vw; margin: 0; display: flex; justify-content: center; overflow-y: scroll; background-color: #121212; color: #FFFFFF; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+            /* 調整 padding 以容納上方的品牌導航列 */
+            body { padding: 100px 8vw 40px 8vw; margin: 0; display: flex; justify-content: center; overflow-y: scroll; background-color: #121212; color: #FFFFFF; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
             body.no-scroll { overflow: hidden; }
 
             .container { width: 100%; max-width: 900px; background-color: #1A1F24; border-radius: 15px; border: 1px solid #2A323C; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; }
@@ -464,16 +464,17 @@ def pro_dashboard(tag: str = ""):
             .nav-btn.active { background-color: #2A323C; }
             
             .search-box { display: flex; gap: 10px; }
-            .search-box input { background-color: #121212; border: 1px solid #2A323C; color: var(--theme-color); padding: 8px 15px; border-radius: 8px; font-family: 'Consolas', monospace; font-size: 16px; outline: none; transition: border-color 0.3s; }
+            .search-box input { background-color: #121212; border: 1px solid #2A323C; color: var(--theme-color); border-radius: 8px; font-family: 'Consolas', monospace; font-size: 16px; outline: none; transition: border-color 0.3s; }
             .search-box input:focus { border-color: var(--theme-color); }
-            .search-box button { background-color: #1A1F24; border: 1px solid #2A323C; color: #FFFFFF; padding: 8px 15px; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-family: 'Consolas', monospace; font-weight: bold; }
+            .search-box button { background-color: #1A1F24; border: 1px solid #2A323C; color: #FFFFFF; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-family: 'Consolas', monospace; font-weight: bold; }
             .search-box button:hover { background-color: var(--theme-color); color: #121212; }
 
+            /* 強制固定元素寬度，解決中英切換導致的左右跳動跑版 */
             .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--theme-color); padding-bottom: 20px; margin-bottom: 30px; transition: border-color 0.3s; flex-wrap: nowrap; overflow: hidden; }
             
             .top-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
             .stat-box { background-color: #121212; border-radius: 12px; padding: 20px; text-align: center; border-left: 4px solid var(--theme-color); transition: border-color 0.3s; }
-            .stat-box .title { font-size: 16px; color: #AAAAAA; margin-bottom: 8px; font-weight: bold; }
+            .stat-box .title { font-size: 16px; color: #AAAAAA; margin-bottom: 8px; font-weight: bold; white-space: nowrap; }
             .stat-box .value { font-size: 24px; font-weight: bold; color: #FFFFFF; font-family: 'Consolas', monospace; transition: text-shadow 0.3s, color 0.3s; }
             .stat-box .diff { font-size: 14px; color: var(--theme-color); transition: color 0.3s; }
             
@@ -536,17 +537,25 @@ def pro_dashboard(tag: str = ""):
     </head>
     <body>
         
-        <div style="width: 100%; background-color: #0B1015; border-bottom: 2px solid #1A1F24; padding: 18px 0; text-align: center; position: fixed; top: 0; left: 0; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.6);">
-            <span style="color: #00FFAA; font-size: 24px; font-weight: 900; letter-spacing: 1.5px; font-family: 'Segoe UI', Tahoma, sans-serif;">
-                <span style="font-size: 20px; vertical-align: middle; margin-right: 5px;">🎮</span> Brawl Tracker
+        <!-- 🌟 置頂的 Brawl Tracker 品牌導航列 (新增了雙語切換按鈕) -->
+        <div style="width: 100%; background-color: #0B1015; border-bottom: 2px solid #1A1F24; padding: 12px 5vw; display: flex; justify-content: space-between; align-items: center; position: fixed; top: 0; left: 0; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.6); box-sizing: border-box;">
+            <!-- 左側：品牌 Logo -->
+            <span style="color: #00FFAA; font-size: 24px; font-weight: 900; letter-spacing: 1.5px; font-family: 'Segoe UI', Tahoma, sans-serif; display: flex; align-items: center;">
+                <span style="font-size: 22px; margin-right: 8px;">🎮</span> Brawl Tracker
             </span>
+            
+            <!-- 右側：國際化雙語切換開關 -->
+            <div class="lang-switch" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px;">
+                <button id="lang-zh" onclick="setLang('zh')" style="background: var(--theme-color); color: #121212; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">繁</button>
+                <button id="lang-en" onclick="setLang('en')" style="background: transparent; color: #AAAAAA; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">EN</button>
+            </div>
         </div>
 
         <div class="container">
             
             <div class="nav-bar" style="display: __DASHBOARD_DISPLAY_NAV__;">
                 <div class="nav-group">
-                    <button id="btn-page-toggle" class="nav-btn active" style="color: var(--theme-color); width: 170px; text-align: center;" onclick="togglePage()">▶ 切換至排位賽</button>
+                    <button id="btn-page-toggle" class="nav-btn active" style="color: var(--theme-color); width: 170px; text-align: center; white-space: nowrap;" onclick="togglePage()">▶ 切換至排位賽</button>
                 </div>
                 
                 <div class="nav-group" id="display-nav">
@@ -561,29 +570,27 @@ def pro_dashboard(tag: str = ""):
                 </div>
                 
                 <div class="nav-group" id="view-nav">
-                    <button class="nav-btn" onclick="switchView('session')" id="btn-session">▶ 本次區間</button>
-                    <button class="nav-btn" onclick="switchView('all_time')" id="btn-all_time">▶ 歷史總計</button>
+                    <button class="nav-btn" onclick="switchView('session')" id="btn-session" style="min-width: 130px; text-align: center;">▶ 本次區間</button>
+                    <button class="nav-btn" onclick="switchView('all_time')" id="btn-all_time" style="min-width: 130px; text-align: center;">▶ 歷史總計</button>
                 </div>
             </div>
 
+            <!-- ✨ 完美對稱且不跳動：強制設定左側標籤與右側搜尋的寬度 -->
             <div class="header" style="flex-wrap: nowrap;">
                 <div style="flex: 1; display: flex; justify-content: flex-start; align-items: center;">
                     <form action="/" method="GET" style="display:flex; align-items:center; gap: 10px; margin:0;">
-                        <span id="lbl-tag" style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3);">請輸入玩家標籤：</span>
+                        <!-- ✨ 加上賽博龐克螢光藍綠漸變色 -->
+                        <span id="lbl-tag" style="background: linear-gradient(90deg, #00FFAA, #00b3ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size:20px; font-weight:bold; white-space:nowrap; display: inline-block; min-width: 160px; text-shadow: 0 0 15px rgba(0,255,170,0.2);">請輸入玩家標籤：</span>
                         <input type="text" name="tag" value="__CURRENT_TAG__" id="input-tag" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
-                        <button type="submit" id="btn-track" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 20px; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s; white-space:nowrap;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
+                        <button type="submit" id="btn-track" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 0; width: 80px; text-align: center; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s; white-space:nowrap;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
                     </form>
                 </div>
                 
-                <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 15px;">
-                    <div class="search-box" style="margin-bottom: 0; display: __DASHBOARD_DISPLAY_SEARCH__;">
-                        <input type="text" id="searchInput" placeholder="🔍 搜尋英雄、地圖" onkeypress="if(event.key === 'Enter') handleSearch()" style="width: 180px; padding: 8px 12px;">
-                        <button id="btn-search" onclick="handleSearch()" style="padding: 8px 20px; white-space:nowrap;">查詢</button>
-                    </div>
-                    
-                    <div class="lang-switch" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 38px;">
-                        <button id="lang-zh" onclick="setLang('zh')" style="background: var(--theme-color); color: #121212; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">繁</button>
-                        <button id="lang-en" onclick="setLang('en')" style="background: transparent; color: #AAAAAA; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">EN</button>
+                <div style="flex: 1; display: __DASHBOARD_DISPLAY_SEARCH__; justify-content: flex-end; align-items: center; gap: 15px;">
+                    <div class="search-box" style="margin-bottom: 0;">
+                        <!-- ✨ 拉寬搜尋框，確保英文的 Map 也能完整顯示 -->
+                        <input type="text" id="searchInput" placeholder="🔍 搜尋英雄、地圖" onkeypress="if(event.key === 'Enter') handleSearch()" style="width: 220px; padding: 8px 12px;">
+                        <button id="btn-search" onclick="handleSearch()" style="padding: 8px 0; width: 80px; text-align: center; white-space:nowrap;">查詢</button>
                     </div>
                 </div>
             </div>
@@ -666,7 +673,7 @@ def pro_dashboard(tag: str = ""):
                     cat_tot: '分類總計', sum_wl: '總勝負', pr: '出場率'
                 },
                 'en': {
-                    tag_lbl: 'Player Tag:', track: 'Track', search_ph: '🔍 Search Brawler, Map', search_btn: 'Search',
+                    tag_lbl: 'Player Tag:', track: 'Track', search_ph: '🔍 Search Brawler/Map', search_btn: 'Search',
                     welcome_t: 'Welcome to Brawl Tactics',
                     welcome_d: 'A powerful esports-grade data analytics system for Brawl Stars.<br>Enter a player tag (including #) above to track or view stats.',
                     trophies: '🏆 Trophies', v3v3: '⚔️ 3V3 Wins', elo: '🎯 Ranked Elo', tier: '⭐ Ranked Tier',
