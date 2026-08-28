@@ -448,7 +448,6 @@ def pro_dashboard(tag: str = ""):
         <meta charset="UTF-8">
         <title>Brawl Tactics Dashboard</title>
         <style>
-            /* 1. 預設主題色，讓歡迎畫面的按鈕也能發亮 */
             :root { --theme-color: #00FFAA; }
             
             body { background-color: #121212; color: #FFFFFF; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px 8vw; margin: 0; display: flex; justify-content: center; overflow-y: scroll; }
@@ -468,8 +467,8 @@ def pro_dashboard(tag: str = ""):
             .search-box button { background-color: #1A1F24; border: 1px solid #2A323C; color: #FFFFFF; padding: 8px 15px; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-family: 'Consolas', monospace; font-weight: bold; }
             .search-box button:hover { background-color: var(--theme-color); color: #121212; }
 
-            /* 2. 標題與搜尋列水平排列修正 */
-            .header { display: flex; justify-content: space-between; align-items: center; gap: 20px; border-bottom: 3px solid var(--theme-color); padding-bottom: 20px; margin-bottom: 30px; transition: border-color 0.3s; flex-wrap: wrap; }
+            /* ✨ 修正：使用 space-between 讓表單和搜尋框分別靠左、靠右對齊 */
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--theme-color); padding-bottom: 20px; margin-bottom: 30px; transition: border-color 0.3s; flex-wrap: wrap; gap: 15px; }
             
             .top-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
             .stat-box { background-color: #121212; border-radius: 12px; padding: 20px; text-align: center; border-left: 4px solid var(--theme-color); transition: border-color 0.3s; }
@@ -850,6 +849,7 @@ def pro_dashboard(tag: str = ""):
             }
 
             function render() {
+                // 如果是空資料(歡迎畫面)，就不用執行渲染
                 if (!appData['current_player'] || appData['current_player'].trophies === 0) return;
 
                 const data = appData['current_player'];
@@ -936,6 +936,7 @@ def pro_dashboard(tag: str = ""):
     </html>
     """
     
+    # 動態變數注入
     final_html = html_template.replace('__APP_DATA_HERE__', js_string)
     final_html = final_html.replace('__CURRENT_TAG__', tag)
     final_html = final_html.replace('__DASHBOARD_DISPLAY_NAV__', dashboard_display_nav)
