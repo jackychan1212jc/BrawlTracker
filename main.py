@@ -349,8 +349,9 @@ def pro_dashboard(tag: str = ""):
     if tag and not tag.startswith("#"):
         tag = "#" + tag
 
-    # UI 顯示狀態切換
+    dashboard_display_nav = "flex" if tag else "none"
     dashboard_display = "block" if tag else "none"
+    dashboard_display_search = "flex" if tag else "none"  # 確保搜尋框保持 flex 屬性
     welcome_display = "block" if not tag else "none"
     refresh_status_text = "等待玩家輸入標籤"
     
@@ -449,14 +450,12 @@ def pro_dashboard(tag: str = ""):
         <style>
             :root { --theme-color: #00FFAA; }
             
-            /* ✨ 修正：加入 overflow-y: scroll 強制顯示卷軸，從此告別畫面左右跳動 */
             body { background-color: #121212; color: #FFFFFF; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px 8vw; margin: 0; display: flex; justify-content: center; overflow-y: scroll; }
             body.no-scroll { overflow: hidden; }
 
             .container { width: 100%; max-width: 900px; background-color: #1A1F24; border-radius: 15px; border: 1px solid #2A323C; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
             
-            /* 導覽列(工具列) 的 CSS */
-            .nav-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+            .nav-bar { justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
             .nav-group { display: flex; gap: 10px; background-color: #121212; padding: 5px; border-radius: 10px; border: 1px solid #2A323C; }
             .nav-btn { background: none; border: none; color: #555555; font-size: 16px; font-weight: bold; cursor: pointer; padding: 8px 20px; border-radius: 6px; transition: all 0.3s; font-family: 'Consolas', monospace; }
             .nav-btn:hover { background-color: #2A323C; color: #FFFFFF !important; }
@@ -468,8 +467,8 @@ def pro_dashboard(tag: str = ""):
             .search-box button { background-color: #1A1F24; border: 1px solid #2A323C; color: #FFFFFF; padding: 8px 15px; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-family: 'Consolas', monospace; font-weight: bold; }
             .search-box button:hover { background-color: var(--theme-color); color: #121212; }
 
-            /* 搜尋列(Header) 的 CSS */
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--theme-color); padding-bottom: 20px; margin-bottom: 30px; transition: border-color 0.3s; flex-wrap: wrap; gap: 15px; }
+            /* ✨ 絕對不換行的究極版置頂列 */
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--theme-color); padding-bottom: 20px; margin-bottom: 30px; transition: border-color 0.3s; flex-wrap: nowrap; overflow: hidden; }
             
             .top-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
             .stat-box { background-color: #121212; border-radius: 12px; padding: 20px; text-align: center; border-left: 4px solid var(--theme-color); transition: border-color 0.3s; }
@@ -537,17 +536,39 @@ def pro_dashboard(tag: str = ""):
     <body>
         <div class="container">
             
-            <!-- ✨ 修正：把搜尋列(Header)移到最上面，永遠置頂不突兀 -->
-            <div class="header">
+            <div class="nav-bar" style="display: __DASHBOARD_DISPLAY_NAV__;">
+                <div class="nav-group">
+                    <button id="btn-page-toggle" class="nav-btn active" style="color: var(--theme-color); width: 170px; text-align: center;" onclick="togglePage()">▶ 切換至排位賽</button>
+                </div>
+                
+                <div class="nav-group" id="display-nav">
+                    <button class="nav-btn" onclick="setDisplayMode('data')" id="btn-disp-data" title="文字數據版">🔢</button>
+                    <button class="nav-btn" onclick="setDisplayMode('bar')" id="btn-disp-bar" title="進度條狀版">📊</button>
+                </div>
+
+                <div class="nav-group" id="align-nav">
+                    <button class="nav-btn" onclick="setAlignment('flex-start')" id="btn-align-left" title="靠左對齊">⬅️</button>
+                    <button class="nav-btn" onclick="setAlignment('center')" id="btn-align-center" title="置中對齊">⏹️</button>
+                    <button class="nav-btn" onclick="setAlignment('flex-end')" id="btn-align-right" title="靠右對齊">➡️</button>
+                </div>
+                
+                <div class="nav-group" id="view-nav">
+                    <button class="nav-btn" onclick="switchView('session')" id="btn-session">▶ 本次區間</button>
+                    <button class="nav-btn" onclick="switchView('all_time')" id="btn-all_time">▶ 歷史總計</button>
+                </div>
+            </div>
+
+            <!-- ✨ 完美對稱排版：強制不換行，左右平分 -->
+            <div class="header" style="flex-wrap: nowrap;">
                 <form action="/" method="GET" style="display:flex; align-items:center; gap: 10px; margin:0;">
-                    <span style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3);">玩家標籤：</span>
-                    <input type="text" name="tag" value="__CURRENT_TAG__" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:160px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
-                    <button type="submit" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 20px; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
+                    <span style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3);">請輸入玩家標籤：</span>
+                    <input type="text" name="tag" value="__CURRENT_TAG__" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
+                    <button type="submit" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 20px; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s; white-space:nowrap;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
                 </form>
                 
-                <div class="search-box" style="margin-bottom: 0; display: __DASHBOARD_DISPLAY__;">
-                    <input type="text" id="searchInput" placeholder="🔍 搜尋英雄、地圖" onkeypress="if(event.key === 'Enter') handleSearch()" style="width: 200px; padding: 8px 12px;">
-                    <button onclick="handleSearch()" style="padding: 8px 20px;">查詢</button>
+                <div class="search-box" style="margin-bottom: 0; display: __DASHBOARD_DISPLAY_SEARCH__;">
+                    <input type="text" id="searchInput" placeholder="🔍 搜尋英雄、地圖" onkeypress="if(event.key === 'Enter') handleSearch()" style="width: 180px; padding: 8px 12px;">
+                    <button onclick="handleSearch()" style="padding: 8px 20px; white-space:nowrap;">查詢</button>
                 </div>
             </div>
 
@@ -557,31 +578,7 @@ def pro_dashboard(tag: str = ""):
                 <p style="color:#AAAAAA; font-size:18px; line-height: 1.6;">這是一套強大的 Brawl Stars 電競級數據分析系統。<br>請在上方輸入玩家標籤 (包含 #) 以建立或查看該玩家的專屬戰報。</p>
             </div>
 
-            <!-- ✨ 修正：把工具列移到儀表板內部(綠線下方)，不再像長出一個額頭 -->
             <div id="dashboard-wrapper" style="display: __DASHBOARD_DISPLAY__;">
-                <div class="nav-bar">
-                    <div class="nav-group">
-                        <!-- 修正：固定按鈕寬度，防止切換文字時推擠版面 -->
-                        <button id="btn-page-toggle" class="nav-btn active" style="color: var(--theme-color); width: 170px; text-align: center;" onclick="togglePage()">▶ 切換至排位賽</button>
-                    </div>
-                    
-                    <div class="nav-group" id="display-nav">
-                        <button class="nav-btn" onclick="setDisplayMode('data')" id="btn-disp-data" title="文字數據版">🔢</button>
-                        <button class="nav-btn" onclick="setDisplayMode('bar')" id="btn-disp-bar" title="進度條狀版">📊</button>
-                    </div>
-
-                    <div class="nav-group" id="align-nav">
-                        <button class="nav-btn" onclick="setAlignment('flex-start')" id="btn-align-left" title="靠左對齊">⬅️</button>
-                        <button class="nav-btn" onclick="setAlignment('center')" id="btn-align-center" title="置中對齊">⏹️</button>
-                        <button class="nav-btn" onclick="setAlignment('flex-end')" id="btn-align-right" title="靠右對齊">➡️</button>
-                    </div>
-                    
-                    <div class="nav-group" id="view-nav">
-                        <button class="nav-btn" onclick="switchView('session')" id="btn-session">▶ 本次區間</button>
-                        <button class="nav-btn" onclick="switchView('all_time')" id="btn-all_time">▶ 歷史總計</button>
-                    </div>
-                </div>
-
                 <div id="page-main" class="page-container active">
                     <div class="top-stats">
                         <div class="stat-box"><div class="title">🏆 總盃數</div><div class="value" id="val-trophies">- <span class="diff" id="diff-trophies">(-)</span></div></div>
@@ -853,6 +850,7 @@ def pro_dashboard(tag: str = ""):
             }
 
             function render() {
+                // 如果是空資料(歡迎畫面)，就不用執行渲染
                 if (!appData['current_player'] || appData['current_player'].trophies === 0) return;
 
                 const data = appData['current_player'];
@@ -939,9 +937,12 @@ def pro_dashboard(tag: str = ""):
     </html>
     """
     
+    # 動態變數注入
     final_html = html_template.replace('__APP_DATA_HERE__', js_string)
     final_html = final_html.replace('__CURRENT_TAG__', tag)
+    final_html = final_html.replace('__DASHBOARD_DISPLAY_NAV__', dashboard_display_nav)
     final_html = final_html.replace('__DASHBOARD_DISPLAY__', dashboard_display)
+    final_html = final_html.replace('__DASHBOARD_DISPLAY_SEARCH__', dashboard_display_search)
     final_html = final_html.replace('__WELCOME_DISPLAY__', welcome_display)
     final_html = final_html.replace('__REFRESH_TEXT__', refresh_status_text)
 
