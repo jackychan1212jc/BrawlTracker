@@ -30,6 +30,7 @@ MODE_TRANSLATION = {
 PVE_MODES = ['lastStand', 'bossFight', 'roboRumble', 'bigGame', 'megaBoss']
 TARGET_SIX_MODES = ['搶星大作戰', '寶石爭奪戰', '金庫攻防戰', '亂鬥足球', '據點搶奪戰', '極限淘汰賽']
 
+# 伺服器啟動時間，用來當作「本次區間」的切分點
 startup_time_local = datetime.utcnow() + timedelta(hours=8)
 current_local_time_str = startup_time_local.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -455,15 +456,12 @@ def pro_dashboard(tag: str = ""):
 
             .container { width: 100%; max-width: 900px; background-color: #1A1F24; border-radius: 15px; border: 1px solid #2A323C; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; }
             
-            /* CSS Grid 放跳動防推擠：完美三等分 */
-            .nav-bar { grid-template-columns: 1fr auto 1fr; align-items: center; margin-bottom: 25px; gap: 15px; }
+            /* ✨ 修正：CSS Grid 三等分確保按鈕切換時一毫米都不跳動 */
+            .nav-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-bottom: 25px; gap: 15px; }
             .nav-group { display: flex; gap: 10px; background-color: #121212; padding: 5px; border-radius: 10px; border: 1px solid #2A323C; }
             .nav-btn { background: none; border: none; color: #555555; font-size: 16px; font-weight: bold; cursor: pointer; padding: 8px 20px; border-radius: 6px; transition: all 0.3s; font-family: 'Consolas', monospace; }
             .nav-btn:hover { background-color: #2A323C; color: #FFFFFF !important; }
             .nav-btn.active { background-color: #2A323C; }
-            
-            /* 標籤與搜尋列 CSS Grid 完美兩等分防跳動 */
-            .header { display: grid; grid-template-columns: 1fr 1fr; align-items: center; border-bottom: 3px solid var(--theme-color); padding-bottom: 20px; margin-bottom: 30px; gap: 15px; }
             
             .search-box { display: flex; gap: 10px; }
             .search-box input { background-color: #121212; border: 1px solid #2A323C; color: var(--theme-color); border-radius: 8px; font-family: 'Consolas', monospace; font-size: 16px; outline: none; transition: border-color 0.3s; box-sizing: border-box; }
@@ -471,6 +469,8 @@ def pro_dashboard(tag: str = ""):
             .search-box button { background-color: #1A1F24; border: 1px solid #2A323C; color: #FFFFFF; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-family: 'Consolas', monospace; font-weight: bold; box-sizing: border-box; }
             .search-box button:hover { background-color: var(--theme-color); color: #121212; }
 
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--theme-color); padding-bottom: 20px; margin-bottom: 30px; transition: border-color 0.3s; flex-wrap: nowrap; overflow: hidden; }
+            
             .top-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
             .stat-box { background-color: #121212; border-radius: 12px; padding: 20px; text-align: center; border-left: 4px solid var(--theme-color); transition: border-color 0.3s; }
             .stat-box .title { font-size: 16px; color: #AAAAAA; margin-bottom: 8px; font-weight: bold; white-space: nowrap; }
@@ -536,11 +536,19 @@ def pro_dashboard(tag: str = ""):
     </head>
     <body>
         
-        <!-- 🌟 置頂品牌導航列 (新增了完美漸變與左右分區) -->
+        <!-- 🌟 置頂商用級導航列 (語言對稱靠右) -->
         <div style="width: 100%; background-color: #0B1015; border-bottom: 2px solid #1A1F24; padding: 12px 5vw; display: flex; justify-content: space-between; align-items: center; position: fixed; top: 0; left: 0; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.6); box-sizing: border-box;">
-            <!-- 左側：Brawl Tracker 漸變色標誌 -->
-            <span style="background: linear-gradient(90deg, #00FFAA, #00b3ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 26px; font-weight: 900; letter-spacing: 1.5px; font-family: 'Segoe UI', Tahoma, sans-serif; display: flex; align-items: center;">
-                <span style="font-size: 22px; margin-right: 8px; -webkit-text-fill-color: #00FFAA; text-shadow: none;">🎮</span> Brawl Tracker
+            <!-- 左側：Brawl Tracker 漸變色與手繪 P2 遊戲機 SVG -->
+            <span style="display: flex; align-items: center; gap: 10px;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30">
+                    <rect x="1" y="6" width="22" height="12" rx="6" fill="#00FFAA" />
+                    <path d="M 4.25 11.25 h 2 v -2 h 1.5 v 2 h 2 v 1.5 h -2 v 2 h -1.5 v -2 h -2 z" fill="#0B1015" />
+                    <circle cx="15.5" cy="13.5" r="1.5" fill="#0B1015" />
+                    <circle cx="18.5" cy="10.5" r="1.5" fill="#0B1015" />
+                </svg>
+                <span style="background: linear-gradient(90deg, #00FFAA, #00b3ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 26px; font-weight: 900; letter-spacing: 1.5px; font-family: 'Segoe UI', Tahoma, sans-serif;">
+                    Brawl Tracker
+                </span>
             </span>
             
             <!-- 右側：國際化雙語切換開關 -->
@@ -552,7 +560,6 @@ def pro_dashboard(tag: str = ""):
 
         <div class="container">
             
-            <!-- ✨ 修正：使用 CSS Grid 保證導覽列絕對置中不跑版 -->
             <div class="nav-bar" style="display: __DASHBOARD_DISPLAY_NAV__;">
                 <div class="nav-group" style="justify-self: flex-start;">
                     <!-- 固定寬度 170px 防擠壓 -->
@@ -578,21 +585,20 @@ def pro_dashboard(tag: str = ""):
                 </div>
             </div>
 
-            <!-- ✨ 修正：使用 CSS Grid 保證標籤與搜尋列完美二等分，永不跑版 -->
             <div class="header">
-                <div style="justify-self: flex-start;">
+                <div style="flex: 1; display: flex; justify-content: flex-start; align-items: center;">
                     <form action="/" method="GET" style="display:flex; align-items:center; gap: 10px; margin:0;">
-                        <!-- 恢復為純色標籤，並拔除多餘間距 -->
-                        <span id="lbl-tag" style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3);">請輸入玩家標籤：</span>
+                        <!-- ✨ 固定標籤寬度靠右對齊，完美保留漸變色，保證輸入框絕對不亂跳 -->
+                        <span id="lbl-tag" style="background: linear-gradient(90deg, #00FFAA, #00b3ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3); width: 160px; text-align: right; display: inline-block;">請輸入玩家標籤：</span>
                         <input type="text" name="tag" value="__CURRENT_TAG__" id="input-tag" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
                         <button type="submit" id="btn-track" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 0; width: 80px; text-align: center; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s; white-space:nowrap;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
                     </form>
                 </div>
                 
-                <div style="display: __DASHBOARD_DISPLAY_SEARCH__; justify-self: flex-end; align-items: center; gap: 15px;">
+                <div style="flex: 1; display: __DASHBOARD_DISPLAY_SEARCH__; justify-content: flex-end; align-items: center;">
                     <div class="search-box" style="margin-bottom: 0;">
-                        <!-- 加寬 input，確保英文 placeholder "🔍 Search Brawler, Map" 不被切斷 -->
-                        <input type="text" id="searchInput" placeholder="🔍 搜尋英雄、地圖" onkeypress="if(event.key === 'Enter') handleSearch()" style="width: 220px; padding: 8px 12px; box-sizing: border-box;">
+                        <!-- ✨ 拉長搜尋框到 240px，讓英文 Map 可以完美顯示不吃字 -->
+                        <input type="text" id="searchInput" placeholder="🔍 搜尋英雄、地圖" onkeypress="if(event.key === 'Enter') handleSearch()" style="width: 240px; padding: 8px 12px; box-sizing: border-box;">
                         <button id="btn-search" onclick="handleSearch()" style="padding: 8px 0; width: 80px; text-align: center; white-space:nowrap; box-sizing: border-box;">查詢</button>
                     </div>
                 </div>
@@ -676,8 +682,7 @@ def pro_dashboard(tag: str = ""):
                     cat_tot: '分類總計', sum_wl: '總勝負', pr: '出場率'
                 },
                 'en': {
-                    // 精簡英文 placeholder 長度，防超出框外
-                    tag_lbl: 'Player Tag:', track: 'Track', search_ph: '🔍 Search Brawler, Map', search_btn: 'Search',
+                    tag_lbl: 'Player Tag:', track: 'Track', search_ph: '🔍 Search Brawler / Map', search_btn: 'Search',
                     welcome_t: 'Welcome to Brawl Tactics',
                     welcome_d: 'A powerful esports-grade data analytics system for Brawl Stars.<br>Enter a player tag (including #) above to track or view stats.',
                     trophies: '🏆 Trophies', v3v3: '⚔️ 3V3 Wins', elo: '🎯 Ranked Elo', tier: '⭐ Ranked Tier',
