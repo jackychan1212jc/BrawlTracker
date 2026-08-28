@@ -451,10 +451,11 @@ def pro_dashboard(tag: str = ""):
         <style>
             :root { --theme-color: #00FFAA; }
             
-            body { background-color: #121212; color: #FFFFFF; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px 8vw; margin: 0; display: flex; justify-content: center; overflow-y: scroll; }
+            /* 調整 padding 以容納上方的導航列 */
+            body { padding: 110px 8vw 40px 8vw; margin: 0; display: flex; justify-content: center; overflow-y: scroll; background-color: #121212; color: #FFFFFF; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
             body.no-scroll { overflow: hidden; }
 
-            .container { width: 100%; max-width: 900px; background-color: #1A1F24; border-radius: 15px; border: 1px solid #2A323C; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+            .container { width: 100%; max-width: 900px; background-color: #1A1F24; border-radius: 15px; border: 1px solid #2A323C; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; }
             
             .nav-bar { justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
             .nav-group { display: flex; gap: 10px; background-color: #121212; padding: 5px; border-radius: 10px; border: 1px solid #2A323C; }
@@ -468,7 +469,6 @@ def pro_dashboard(tag: str = ""):
             .search-box button { background-color: #1A1F24; border: 1px solid #2A323C; color: #FFFFFF; padding: 8px 15px; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-family: 'Consolas', monospace; font-weight: bold; }
             .search-box button:hover { background-color: var(--theme-color); color: #121212; }
 
-            /* ✨ 完美對稱：不換行，左右平分空間 */
             .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--theme-color); padding-bottom: 20px; margin-bottom: 30px; transition: border-color 0.3s; flex-wrap: nowrap; overflow: hidden; }
             
             .top-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
@@ -535,6 +535,13 @@ def pro_dashboard(tag: str = ""):
         </style>
     </head>
     <body>
+        
+        <div style="width: 100%; background-color: #0B1015; border-bottom: 2px solid #1A1F24; padding: 18px 0; text-align: center; position: fixed; top: 0; left: 0; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.6);">
+            <span style="color: #00FFAA; font-size: 24px; font-weight: 900; letter-spacing: 1.5px; font-family: 'Segoe UI', Tahoma, sans-serif;">
+                <span style="font-size: 20px; vertical-align: middle; margin-right: 5px;">🎮</span> Brawl Tracker
+            </span>
+        </div>
+
         <div class="container">
             
             <div class="nav-bar" style="display: __DASHBOARD_DISPLAY_NAV__;">
@@ -562,33 +569,38 @@ def pro_dashboard(tag: str = ""):
             <div class="header" style="flex-wrap: nowrap;">
                 <div style="flex: 1; display: flex; justify-content: flex-start; align-items: center;">
                     <form action="/" method="GET" style="display:flex; align-items:center; gap: 10px; margin:0;">
-                        <span style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3);">請輸入玩家標籤：</span>
-                        <input type="text" name="tag" value="__CURRENT_TAG__" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
-                        <button type="submit" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 20px; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s; white-space:nowrap;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
+                        <span id="lbl-tag" style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3);">請輸入玩家標籤：</span>
+                        <input type="text" name="tag" value="__CURRENT_TAG__" id="input-tag" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
+                        <button type="submit" id="btn-track" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 20px; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s; white-space:nowrap;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
                     </form>
                 </div>
                 
-                <div style="flex: 1; display: __DASHBOARD_DISPLAY_SEARCH__; justify-content: flex-end; align-items: center;">
-                    <div class="search-box" style="margin-bottom: 0;">
+                <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 15px;">
+                    <div class="search-box" style="margin-bottom: 0; display: __DASHBOARD_DISPLAY_SEARCH__;">
                         <input type="text" id="searchInput" placeholder="🔍 搜尋英雄、地圖" onkeypress="if(event.key === 'Enter') handleSearch()" style="width: 180px; padding: 8px 12px;">
-                        <button onclick="handleSearch()" style="padding: 8px 20px; white-space:nowrap;">查詢</button>
+                        <button id="btn-search" onclick="handleSearch()" style="padding: 8px 20px; white-space:nowrap;">查詢</button>
+                    </div>
+                    
+                    <div class="lang-switch" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 38px;">
+                        <button id="lang-zh" onclick="setLang('zh')" style="background: var(--theme-color); color: #121212; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">繁</button>
+                        <button id="lang-en" onclick="setLang('en')" style="background: transparent; color: #AAAAAA; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">EN</button>
                     </div>
                 </div>
             </div>
 
             <div style="display: __WELCOME_DISPLAY__; text-align: center; padding: 80px 20px;">
                 <div style="font-size: 60px; margin-bottom: 20px;">🎮</div>
-                <h2 style="color:var(--theme-color); font-size:32px; margin-bottom:15px; letter-spacing: 2px;">歡迎使用戰術主控台</h2>
-                <p style="color:#AAAAAA; font-size:18px; line-height: 1.6;">這是一套強大的 Brawl Stars 電競級數據分析系統。<br>請在上方輸入玩家標籤 (包含 #) 以建立或查看該玩家的專屬戰報。</p>
+                <h2 id="welcome-title" style="color:var(--theme-color); font-size:32px; margin-bottom:15px; letter-spacing: 2px;">歡迎使用戰術主控台</h2>
+                <p id="welcome-desc" style="color:#AAAAAA; font-size:18px; line-height: 1.6;">這是一套強大的 Brawl Stars 電競級數據分析系統。<br>請在上方輸入玩家標籤 (包含 #) 以建立或查看該玩家的專屬戰報。</p>
             </div>
 
             <div id="dashboard-wrapper" style="display: __DASHBOARD_DISPLAY__;">
                 <div id="page-main" class="page-container active">
                     <div class="top-stats">
-                        <div class="stat-box"><div class="title">🏆 總盃數</div><div class="value" id="val-trophies">- <span class="diff" id="diff-trophies">(-)</span></div></div>
-                        <div class="stat-box"><div class="title">⚔️ 3V3 勝場</div><div class="value" id="val-3v3">-</div></div>
-                        <div class="stat-box"><div class="title">🎯 排位 Elo</div><div class="value" id="val-elo">- <span class="diff" id="diff-elo">(-)</span></div></div>
-                        <div class="stat-box"><div class="title">⭐ 排位段位</div><div class="value" id="val-tier">-</div></div>
+                        <div class="stat-box"><div class="title" id="title-trophies">🏆 總盃數</div><div class="value" id="val-trophies">- <span class="diff" id="diff-trophies">(-)</span></div></div>
+                        <div class="stat-box"><div class="title" id="title-3v3">⚔️ 3V3 勝場</div><div class="value" id="val-3v3">-</div></div>
+                        <div class="stat-box"><div class="title" id="title-elo">🎯 排位 Elo</div><div class="value" id="val-elo">- <span class="diff" id="diff-elo">(-)</span></div></div>
+                        <div class="stat-box"><div class="title" id="title-tier">⭐ 排位段位</div><div class="value" id="val-tier">-</div></div>
                     </div>
                     
                     <div class="summary-section" id="summary-section"></div>
@@ -597,8 +609,8 @@ def pro_dashboard(tag: str = ""):
 
                 <div id="page-ranked" class="page-container">
                     <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px;">
-                        <div class="stat-box enlarged" style="display: flex; flex-direction: column; justify-content: center; padding: 30px;"><div class="title">🎯 排位 Elo</div><div class="value" id="val-elo-rk">- <span class="diff" id="diff-elo-rk">(-)</span></div></div>
-                        <div class="stat-box enlarged" style="display: flex; flex-direction: column; justify-content: center; padding: 30px;"><div class="title">⭐ 排位段位</div><div class="value" id="val-tier-rk">-</div></div>
+                        <div class="stat-box enlarged" style="display: flex; flex-direction: column; justify-content: center; padding: 30px;"><div class="title" id="title-elo-rk">🎯 排位 Elo</div><div class="value" id="val-elo-rk">- <span class="diff" id="diff-elo-rk">(-)</span></div></div>
+                        <div class="stat-box enlarged" style="display: flex; flex-direction: column; justify-content: center; padding: 30px;"><div class="title" id="title-tier-rk">⭐ 排位段位</div><div class="value" id="val-tier-rk">-</div></div>
                     </div>
                     
                     <div class="summary-section" id="summary-ranked-only" style="margin-bottom: 40px; padding: 15px 25px;"></div>
@@ -607,7 +619,7 @@ def pro_dashboard(tag: str = ""):
                 </div>
             </div>
 
-            <div class="footer">系統運作於 Render 雲端環境 <br><span id="refresh-status" style="color:var(--theme-color);">__REFRESH_TEXT__</span></div>
+            <div class="footer"><span id="footer-cloud">系統運作於 Render 雲端環境</span> <br><span id="refresh-status" style="color:var(--theme-color);">__REFRESH_TEXT__</span></div>
         </div>
 
         <div id="searchModal" class="modal">
@@ -628,8 +640,121 @@ def pro_dashboard(tag: str = ""):
             let currentAlign = localStorage.getItem('pageAlign') || 'center';
             let currentDisplayMode = localStorage.getItem('displayMode') || 'bar'; 
             let activePage = sessionStorage.getItem('activePage') || 'main';
+            let currentLang = localStorage.getItem('lang') || 'zh';
             
             const TARGET_SIX_MODES = ['搶星大作戰', '寶石爭奪戰', '金庫攻防戰', '亂鬥足球', '據點搶奪戰', '極限淘汰賽'];
+
+            // 🌐 國際化多國語系翻譯字典
+            const i18n = {
+                'zh': {
+                    tag_lbl: '請輸入玩家標籤：', track: '追蹤', search_ph: '🔍 搜尋英雄、地圖', search_btn: '查詢',
+                    welcome_t: '歡迎使用戰術主控台',
+                    welcome_d: '這是一套強大的 Brawl Stars 電競級數據分析系統。<br>請在上方輸入玩家標籤 (包含 #) 以建立或查看該玩家的專屬戰報。',
+                    trophies: '🏆 總盃數', v3v3: '⚔️ 3V3 勝場', elo: '🎯 排位 Elo', tier: '⭐ 排位段位',
+                    footer: '系統運作於 Render 雲端環境',
+                    btn_ranked: '▶ 切換至排位賽', btn_main: '◀ 返回總戰績',
+                    btn_ses: '▶ 本次區間', btn_all: '▶ 歷史總計',
+                    m_bounty: '搶星大作戰', m_gem: '寶石爭奪戰', m_heist: '金庫攻防戰', m_ball: '亂鬥足球', m_hot: '據點搶奪戰', m_knock: '極限淘汰賽',
+                    c_rk: '🏅 排位賽', c_ca: '⏳ 一般模式', c_sp: '🎪 特別活動', c_tot: '📊 總戰績',
+                    rk_ses: '🏅 排位戰績 (本次)', rk_all: '🏅 排位總計 (歷史)',
+                    no_rk_ses: '本次區間尚未進行任何排位賽', no_rk_all: '資料庫中尚無排位賽紀錄',
+                    season: ' 第 {s} 賽季', ses_match: '本次對戰', total_match: '總局數: ',
+                    no_hero: '(本次未出戰)', hero_ses: '⚔️ 本次出戰英雄 ({n}場)',
+                    req_3: '(該模式需出場滿 3 次才能計算排行榜)', pr_top: '📊 出場率 Top 3', wr_top: '🏆 勝率 Top 3',
+                    trap: '⚠️ 版本陷阱 (頭鐵掉分機)', gem: '💎 潛力神角 (上分奇兵)', wr: '勝率',
+                    modal_tot: '【 全模式地圖勝率 (歷史總計) 】', modal_not_found: '資料庫中找不到包含【{q}】的英雄紀錄。',
+                    cat_tot: '分類總計', sum_wl: '總勝負', pr: '出場率'
+                },
+                'en': {
+                    tag_lbl: 'Player Tag:', track: 'Track', search_ph: '🔍 Search Brawler, Map', search_btn: 'Search',
+                    welcome_t: 'Welcome to Brawl Tactics',
+                    welcome_d: 'A powerful esports-grade data analytics system for Brawl Stars.<br>Enter a player tag (including #) above to track or view stats.',
+                    trophies: '🏆 Trophies', v3v3: '⚔️ 3V3 Wins', elo: '🎯 Ranked Elo', tier: '⭐ Ranked Tier',
+                    footer: 'Powered by Render Cloud Environment',
+                    btn_ranked: '▶ Ranked Mode', btn_main: '◀ Total Stats',
+                    btn_ses: '▶ Session', btn_all: '▶ All-Time',
+                    m_bounty: 'Bounty', m_gem: 'Gem Grab', m_heist: 'Heist', m_ball: 'Brawl Ball', m_hot: 'Hot Zone', m_knock: 'Knockout',
+                    c_rk: '🏅 Ranked', c_ca: '⏳ Casual', c_sp: '🎪 Special', c_tot: '📊 Total',
+                    rk_ses: '🏅 Ranked (Session)', rk_all: '🏅 Ranked (All-Time)',
+                    no_rk_ses: 'No ranked matches played in this session', no_rk_all: 'No ranked records in database',
+                    season: ' Season {s}', ses_match: 'Session Match', total_match: 'Total Matches: ',
+                    no_hero: '(No matches in session)', hero_ses: '⚔️ Heroes Played ({n})',
+                    req_3: '(Requires 3 matches to rank)', pr_top: '📊 Pick Rate Top 3', wr_top: '🏆 Win Rate Top 3',
+                    trap: '⚠️ Meta Trap (Trophy Drain)', gem: '💎 Hidden Gem (Trophy Pusher)', wr: 'Win Rate',
+                    modal_tot: '【 Win Rate by Mode/Map (All-Time) 】', modal_not_found: 'No records found for brawler containing "{q}".',
+                    cat_tot: 'Category Total', sum_wl: 'Total W/L', pr: 'Pick Rate'
+                }
+            };
+
+            function setLang(lang) {
+                currentLang = lang;
+                localStorage.setItem('lang', lang);
+                
+                const isEn = lang === 'en';
+                document.getElementById('lang-zh').style.background = isEn ? 'transparent' : 'var(--theme-color)';
+                document.getElementById('lang-zh').style.color = isEn ? '#AAAAAA' : '#121212';
+                document.getElementById('lang-en').style.background = isEn ? 'var(--theme-color)' : 'transparent';
+                document.getElementById('lang-en').style.color = isEn ? '#121212' : '#AAAAAA';
+                
+                applyLangText();
+                if (appData['current_player'] && appData['current_player'].trophies > 0) {
+                    render();
+                }
+            }
+
+            function applyLangText() {
+                const t = i18n[currentLang];
+                document.getElementById('lbl-tag').innerText = t.tag_lbl;
+                document.getElementById('input-tag').placeholder = currentLang === 'en' ? '#XXXXXXX' : '#XXXXXXX';
+                document.getElementById('btn-track').innerText = t.track;
+                
+                const sInp = document.getElementById('searchInput');
+                if(sInp) sInp.placeholder = t.search_ph;
+                const sBtn = document.getElementById('btn-search');
+                if(sBtn) sBtn.innerText = t.search_btn;
+                
+                document.getElementById('welcome-title').innerText = t.welcome_t;
+                document.getElementById('welcome-desc').innerHTML = t.welcome_d;
+                document.getElementById('footer-cloud').innerHTML = t.footer;
+                
+                const bpt = document.getElementById('btn-page-toggle');
+                if (bpt) bpt.innerText = activePage === 'main' ? t.btn_ranked : t.btn_main;
+                
+                const bDispData = document.getElementById('btn-disp-data');
+                if (bDispData) bDispData.title = currentLang === 'en' ? 'Text View' : '文字數據版';
+                const bDispBar = document.getElementById('btn-disp-bar');
+                if (bDispBar) bDispBar.title = currentLang === 'en' ? 'Bar View' : '進度條狀版';
+                
+                const bSes = document.getElementById('btn-session');
+                if (bSes) bSes.innerText = t.btn_ses;
+                const bAll = document.getElementById('btn-all_time');
+                if (bAll) bAll.innerText = t.btn_all;
+
+                const tt = document.getElementById('title-trophies'); if(tt) tt.innerText = t.trophies;
+                const t3 = document.getElementById('title-3v3'); if(t3) t3.innerText = t.v3v3;
+                const te = document.getElementById('title-elo'); if(te) te.innerText = t.elo;
+                const ttr = document.getElementById('title-tier'); if(ttr) ttr.innerText = t.tier;
+                const terk = document.getElementById('title-elo-rk'); if(terk) terk.innerText = t.elo;
+                const ttrrk = document.getElementById('title-tier-rk'); if(ttrrk) ttrrk.innerText = t.tier;
+                
+                const rs = document.getElementById('refresh-status');
+                if (rs) {
+                    if (rs.innerText.includes('等待') || rs.innerText.includes('Wait')) rs.innerText = currentLang === 'zh' ? '等待玩家輸入標籤' : 'Waiting for Player Tag';
+                    else if (rs.innerText.includes('完成') || rs.innerText.includes('Sync')) rs.innerText = currentLang === 'zh' ? '資料庫同步完成' : 'Database Synced';
+                }
+            }
+
+            // 動態文字對應器
+            function TL(str) {
+                if (currentLang === 'zh') return str;
+                const map = {
+                    '🏅 排位賽': '🏅 Ranked', '⏳ 一般模式': '⏳ Casual', '🎯 挑戰': '🎯 Challenge', '🎪 特別活動': '🎪 Special', '📊 總戰績': '📊 Total',
+                    '排位賽': 'Ranked', '一般模式': 'Casual', '挑戰': 'Challenge', '特別活動': 'Special Events',
+                    '搶星大作戰': 'Bounty', '寶石爭奪戰': 'Gem Grab', '金庫攻防戰': 'Heist', 
+                    '亂鬥足球': 'Brawl Ball', '據點搶奪戰': 'Hot Zone', '極限淘汰賽': 'Knockout'
+                };
+                return map[str] || str;
+            }
 
             function get_wr_js(w, l, d=0) {
                 let total = w + l + d;
@@ -647,11 +772,12 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('page-ranked').classList.toggle('active', activePage === 'ranked');
                 
                 const btn = document.getElementById('btn-page-toggle');
+                const t = i18n[currentLang];
                 if (btn) {
                     if (activePage === 'main') {
-                        btn.innerHTML = '▶ 切換至排位賽';
+                        btn.innerHTML = t.btn_ranked;
                     } else {
-                        btn.innerHTML = '◀ 返回總戰績';
+                        btn.innerHTML = t.btn_main;
                     }
                 }
             }
@@ -688,6 +814,7 @@ def pro_dashboard(tag: str = ""):
                 const container = document.getElementById('ranked-seasons-container');
                 if (!container) return;
                 container.innerHTML = '';
+                const t = i18n[currentLang];
                 
                 const isSession = (currentView === 'session');
                 const seasonsData = isSession ? accData.ranked_seasons_session : accData.ranked_seasons_all_time;
@@ -696,7 +823,7 @@ def pro_dashboard(tag: str = ""):
                     container.innerHTML = `
                         <div style="text-align:center; padding: 50px 20px; background-color:#121212; border-radius:12px; margin-top:20px; border:1px dashed #2A323C;">
                             <div style="font-size:32px; margin-bottom:10px;">${isSession ? '⏳' : '📊'}</div>
-                            <div style="font-size:18px; color:#AAA; font-weight:bold;">${isSession ? '本次區間尚未進行任何排位賽' : '資料庫中尚無排位賽紀錄'}</div>
+                            <div style="font-size:18px; color:#AAA; font-weight:bold;">${isSession ? t.no_rk_ses : t.no_rk_all}</div>
                         </div>`;
                     return;
                 }
@@ -706,13 +833,14 @@ def pro_dashboard(tag: str = ""):
                 seasons.forEach(season => {
                     const sData = seasonsData[season];
                     
+                    let seasonTitleStr = currentLang === 'zh' ? `第 ${season} 賽季` : `Season ${season}`;
                     let subBadge = isSession ? 
-                        `<span style="font-size:14px; color:var(--theme-color); padding: 2px 8px; border: 1px solid var(--theme-color); border-radius: 4px; margin-left:10px;">本次對戰</span>` :
+                        `<span style="font-size:14px; color:var(--theme-color); padding: 2px 8px; border: 1px solid var(--theme-color); border-radius: 4px; margin-left:10px;">${t.ses_match}</span>` :
                         ((sData.start_date && sData.end_date) ? ` <span style="font-size:18px; color:#AAAAAA;">(${sData.start_date} ~ ${sData.end_date})</span>` : "");
                     
                     let sHtml = `<div class="season-section">
                         <h2 style="color:var(--theme-color); border-bottom: 2px solid #2A323C; padding-bottom: 10px; margin-top: 30px;">
-                            🏆 第 ${season} 賽季${subBadge} <span style="font-size:16px; color:#888; float:right; line-height: 28px;">${sData.w}W - ${sData.l}L (${get_wr_js(sData.w, sData.l, sData.d)})</span>
+                            🏆 ${seasonTitleStr}${subBadge} <span style="font-size:16px; color:#888; float:right; line-height: 28px;">${sData.w}W - ${sData.l}L (${get_wr_js(sData.w, sData.l, sData.d)})</span>
                         </h2>
                         <div class="brawler-grid">`;
                     
@@ -735,14 +863,15 @@ def pro_dashboard(tag: str = ""):
                         
                         let color = modeColors[modeName] || '#FFFFFF';
                         let mHtml = `<div class="brawler-cat" style="border-top: 4px solid ${color};">
-                            <h3 style="color: ${color}; margin-bottom: 5px;">${modeName}</h3>
-                            <div style="text-align: right; font-size: 14px; color: #888; font-family: Consolas; margin-bottom: 15px;">總局數: ${totalMatches}</div>`;
+                            <h3 style="color: ${color}; margin-bottom: 5px;">${TL(modeName)}</h3>
+                            <div style="text-align: right; font-size: 14px; color: #888; font-family: Consolas; margin-bottom: 15px;">${t.total_match}${totalMatches}</div>`;
                             
                         if (isSession) {
                             if (brawlers.length === 0) {
-                                mHtml += `<div style="color:#777; text-align:center; padding: 30px 0;">(本次未出戰)</div>`;
+                                mHtml += `<div style="color:#777; text-align:center; padding: 30px 0;">${t.no_hero}</div>`;
                             } else {
-                                mHtml += `<div style="color:#DDD; font-size:14px; margin: 10px 0 8px 0; font-weight:bold;">⚔️ 本次出戰英雄 (${totalMatches}場)</div>`;
+                                let hSes = t.hero_ses.replace('{n}', totalMatches);
+                                mHtml += `<div style="color:#DDD; font-size:14px; margin: 10px 0 8px 0; font-weight:bold;">${hSes}</div>`;
                                 brawlers.sort((a, b) => b.matches - a.matches || b.wr - a.wr);
                                 brawlers.forEach(b => {
                                     mHtml += `<div class="b-line-bar"><div class="bar-label"><span class="b-name">🦸 ${b.name}</span><span class="b-data">${(b.wr*100).toFixed(1)}% (${b.w}W-${b.l}L)</span></div><div class="bar-track"><div class="bar-fill win" style="width: ${b.wr*100}%; background-color: ${color};"></div></div></div>`;
@@ -753,21 +882,21 @@ def pro_dashboard(tag: str = ""):
                             let topPR = [...valid].sort((a, b) => b.pr - a.pr).slice(0, 3);
                             let topWR = [...valid].sort((a, b) => b.wr - a.wr || b.matches - a.matches).slice(0, 3);
                             let trap = [...valid].filter(b => b.wr < 0.45).sort((a, b) => b.matches - a.matches)[0];
-                            let gem = [...valid].filter(b => b.wr >= 0.70 && !topPR.some(t => t.name === b.name)).sort((a, b) => b.wr - a.wr || b.matches - a.matches)[0];
+                            let gem = [...valid].filter(b => b.wr >= 0.70 && !topPR.some(b2 => b2.name === b.name)).sort((a, b) => b.wr - a.wr || b.matches - a.matches)[0];
                             
                             if (valid.length === 0) {
-                                mHtml += `<div style="color:#777; text-align:center; padding: 30px 0;">(該模式需出場滿 3 次才能計算排行榜)</div>`;
+                                mHtml += `<div style="color:#777; text-align:center; padding: 30px 0;">${t.req_3}</div>`;
                             } else {
-                                mHtml += `<div style="color:#DDD; font-size:14px; margin: 10px 0 5px 0;">📊 出場率 Top 3</div>`;
-                                topPR.forEach(b => { mHtml += `<div class="b-line-bar"><div class="bar-label"><span class="b-name">🦸 ${b.name}</span><span class="b-data">${(b.pr*100).toFixed(1)}% (${b.matches}場)</span></div><div class="bar-track"><div class="bar-fill" style="width: ${b.pr*100}%; background-color: #888888;"></div></div></div>`; });
+                                mHtml += `<div style="color:#DDD; font-size:14px; margin: 10px 0 5px 0;">${t.pr_top}</div>`;
+                                topPR.forEach(b => { mHtml += `<div class="b-line-bar"><div class="bar-label"><span class="b-name">🦸 ${b.name}</span><span class="b-data">${(b.pr*100).toFixed(1)}% (${b.matches}${currentLang==='zh'?'場':''})</span></div><div class="bar-track"><div class="bar-fill" style="width: ${b.pr*100}%; background-color: #888888;"></div></div></div>`; });
                                 
-                                mHtml += `<div style="color:#DDD; font-size:14px; margin: 20px 0 5px 0;">🏆 勝率 Top 3</div>`;
+                                mHtml += `<div style="color:#DDD; font-size:14px; margin: 20px 0 5px 0;">${t.wr_top}</div>`;
                                 topWR.forEach(b => { mHtml += `<div class="b-line-bar"><div class="bar-label"><span class="b-name">🦸 ${b.name}</span><span class="b-data">${(b.wr*100).toFixed(1)}% (${b.w}W-${b.l}L)</span></div><div class="bar-track"><div class="bar-fill win" style="width: ${b.wr*100}%; background-color: ${color};"></div></div></div>`; });
                                 
                                 if (trap || gem) {
                                     mHtml += `<div style="margin-top: 25px; padding: 12px; background-color: #1A1F24; border-radius: 6px; border-left: 3px solid #2A323C;">`;
-                                    if (trap) mHtml += `<div style="margin-bottom: ${gem ? '12px' : '0'};"><div style="color:#FF5555; font-size:13px; font-weight:bold;">⚠️ 版本陷阱 (頭鐵掉分機)</div><div style="display:flex; justify-content:space-between; margin-top:5px; font-family:Consolas;"><span class="b-name">🦸 ${trap.name}</span><span style="color:#FFF;">${(trap.wr*100).toFixed(1)}% 勝率</span></div></div>`;
-                                    if (gem) mHtml += `<div><div style="color:#00FFAA; font-size:13px; font-weight:bold;">💎 潛力神角 (上分奇兵)</div><div style="display:flex; justify-content:space-between; margin-top:5px; font-family:Consolas;"><span class="b-name">🦸 ${gem.name}</span><span style="color:#FFF;">${(gem.wr*100).toFixed(1)}% 勝率</span></div></div>`;
+                                    if (trap) mHtml += `<div style="margin-bottom: ${gem ? '12px' : '0'};"><div style="color:#FF5555; font-size:13px; font-weight:bold;">${t.trap}</div><div style="display:flex; justify-content:space-between; margin-top:5px; font-family:Consolas;"><span class="b-name">🦸 ${trap.name}</span><span style="color:#FFF;">${(trap.wr*100).toFixed(1)}% ${t.wr}</span></div></div>`;
+                                    if (gem) mHtml += `<div><div style="color:#00FFAA; font-size:13px; font-weight:bold;">${t.gem}</div><div style="display:flex; justify-content:space-between; margin-top:5px; font-family:Consolas;"><span class="b-name">🦸 ${gem.name}</span><span style="color:#FFF;">${(gem.wr*100).toFixed(1)}% ${t.wr}</span></div></div>`;
                                     mHtml += `</div>`;
                                 }
                             }
@@ -785,7 +914,8 @@ def pro_dashboard(tag: str = ""):
                 if(!searchInput) return;
                 const query = searchInput.value.trim();
                 if (!query) return;
-
+                
+                const t = i18n[currentLang];
                 const isChinese = /[\\u4e00-\\u9fff]/.test(query);
                 const searchData = appData['current_player']['all_time'];
                 let resultHtml = "";
@@ -793,7 +923,7 @@ def pro_dashboard(tag: str = ""):
                 const modalBox = document.getElementById('modal-content-box');
 
                 if (isChinese) {
-                    modalTitle = "【 全模式地圖勝率 (歷史總計) 】";
+                    modalTitle = t.modal_tot;
                     if (modalBox) modalBox.style.maxWidth = "500px"; 
                     
                     resultHtml += `<div class="map-view-grid">`;
@@ -801,10 +931,10 @@ def pro_dashboard(tag: str = ""):
                     mapCategories.forEach(([icon, cat]) => {
                         let catData = searchData.map_stats.find(c => c.title === cat);
                         if (catData) {
-                            resultHtml += `<div class="brawler-cat"><h3>${icon} ${cat} <span style="float:right; color:var(--theme-color); font-family:Consolas;">${catData.wr}</span></h3>`;
-                            resultHtml += createRowHtml('分類總計', {stats: `${catData.wins}W - ${catData.losses}L`, w: catData.w, l: catData.l, d: catData.d}, true);
+                            resultHtml += `<div class="brawler-cat"><h3>${icon} ${TL(cat)} <span style="float:right; color:var(--theme-color); font-family:Consolas;">${catData.wr}</span></h3>`;
+                            resultHtml += createRowHtml(t.cat_tot, {stats: `${catData.wins}W - ${catData.losses}L`, w: catData.w, l: catData.l, d: catData.d}, true);
                             catData.modes.forEach(m => {
-                                resultHtml += createRowHtml(`• ${m.name}`, m);
+                                resultHtml += createRowHtml(`• ${TL(m.name)}`, m);
                             });
                             resultHtml += `</div>`;
                         }
@@ -814,15 +944,16 @@ def pro_dashboard(tag: str = ""):
                     if (modalBox) modalBox.style.maxWidth = "500px";
                     const bName = Object.keys(searchData.brawler_details).find(k => k.includes(query.toUpperCase()));
                     if (!bName) {
-                        alert(`資料庫中找不到包含【${query}】的英雄紀錄。`);
+                        alert(t.modal_not_found.replace('{q}', query));
                         return;
                     }
                     const bStats = searchData.brawler_details[bName];
-                    modalTitle = `【 ${bName} 】(歷史總計)`;
+                    modalTitle = currentLang === 'zh' ? `【 ${bName} 】(歷史總計)` : `[ ${bName} ] (All-Time)`;
                     let totalRankedMatches = searchData.summary.ranked.w + searchData.summary.ranked.l + searchData.summary.ranked.d;
 
-                    resultHtml += `<div class="brawler-cat" style="border-left-color:#FFAA00;"><h3>▶ 總結 <span style="float:right; color:#FFAA00; font-family:Consolas;">${bStats.summary.split('(')[1].replace(')','')}</span></h3>`;
-                    resultHtml += createRowHtml('總勝負', {stats: bStats.summary.split('(')[0].trim(), w: bStats.w, l: bStats.l, d: bStats.d});
+                    let sum_title = currentLang === 'zh' ? '▶ 總結' : '▶ Summary';
+                    resultHtml += `<div class="brawler-cat" style="border-left-color:#FFAA00;"><h3>${sum_title} <span style="float:right; color:#FFAA00; font-family:Consolas;">${bStats.summary.split('(')[1].replace(')','')}</span></h3>`;
+                    resultHtml += createRowHtml(t.sum_wl, {stats: bStats.summary.split('(')[0].trim(), w: bStats.w, l: bStats.l, d: bStats.d});
                     resultHtml += `</div>`;
                     
                     bStats.cats.forEach(cat => {
@@ -830,12 +961,12 @@ def pro_dashboard(tag: str = ""):
                         if (cat.title === '排位賽') {
                             let catMatches = cat.w + cat.l + cat.d;
                             let pr = totalRankedMatches > 0 ? ((catMatches / totalRankedMatches) * 100).toFixed(1) : "0.0";
-                            prText = ` <span style="font-size:14px; color:#888;">(出場率: ${pr}%)</span>`;
+                            prText = ` <span style="font-size:14px; color:#888;">(${t.pr}: ${pr}%)</span>`;
                         }
-                        resultHtml += `<div class="brawler-cat"><h3>${cat.icon} ${cat.title}${prText} <span style="float:right; color:var(--theme-color); font-family:Consolas;">${cat.wr}</span></h3>`;
-                        resultHtml += createRowHtml('分類總計', {stats: `${cat.wins}W - ${cat.losses}L`, w: cat.w, l: cat.l, d: cat.d});
+                        resultHtml += `<div class="brawler-cat"><h3>${cat.icon} ${TL(cat.title)}${prText} <span style="float:right; color:var(--theme-color); font-family:Consolas;">${cat.wr}</span></h3>`;
+                        resultHtml += createRowHtml(t.cat_tot, {stats: `${cat.wins}W - ${cat.losses}L`, w: cat.w, l: cat.l, d: cat.d});
                         cat.modes.forEach(m => {
-                            resultHtml += createRowHtml(`• ${m.name}`, m);
+                            resultHtml += createRowHtml(`• ${TL(m.name)}`, m);
                         });
                         resultHtml += `</div>`;
                     });
@@ -854,12 +985,12 @@ def pro_dashboard(tag: str = ""):
             }
 
             function render() {
-                // 如果是空資料(歡迎畫面)，就不用執行渲染
                 if (!appData['current_player'] || appData['current_player'].trophies === 0) return;
 
                 const data = appData['current_player'];
                 const viewData = data[currentView];
                 const isSession = (currentView === 'session');
+                const t = i18n[currentLang];
                 
                 document.documentElement.style.setProperty('--theme-color', data.color);
                 applyPageState();
@@ -901,19 +1032,19 @@ def pro_dashboard(tag: str = ""):
                 tierElemRk.style.textShadow = `0 0 15px ${tierColor}90`;
                 
                 document.getElementById('summary-section').innerHTML = `
-                    ${createRowHtml('🏅 排位賽', viewData.summary.ranked, true)}
-                    ${createRowHtml('⏳ 一般模式', viewData.summary.casual, true)}
-                    ${createRowHtml('🎪 特別活動', viewData.summary.special, true)}
-                    ${createRowHtml('📊 總戰績', viewData.summary.total, true, true)}
+                    ${createRowHtml(TL('🏅 排位賽'), viewData.summary.ranked, true)}
+                    ${createRowHtml(TL('⏳ 一般模式'), viewData.summary.casual, true)}
+                    ${createRowHtml(TL('🎪 特別活動'), viewData.summary.special, true)}
+                    ${createRowHtml(TL('📊 總戰績'), viewData.summary.total, true, true)}
                 `;
                 
-                const rkLabel = isSession ? '🏅 排位戰績 (本次)' : '🏅 排位總計 (歷史)';
+                const rkLabel = isSession ? t.rk_ses : t.rk_all;
                 document.getElementById('summary-ranked-only').innerHTML = createRowHtml(rkLabel, viewData.summary.ranked, true);
 
                 const grid = document.getElementById('brawler-grid');
                 grid.innerHTML = '';
                 viewData.brawlers.forEach(cat => {
-                    let catHtml = `<div class="brawler-cat"><h3>${cat.icon} ${cat.title}</h3>`;
+                    let catHtml = `<div class="brawler-cat"><h3>${cat.icon} ${TL(cat.title)}</h3>`;
                     cat.items.forEach(b => {
                         catHtml += createRowHtml(`🦸 ${b.name}`, b);
                     });
@@ -934,14 +1065,14 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('btn-align-right').classList.toggle('active', align === 'flex-end');
             }
 
-            render();
+            // 頁面載入時立刻套用歷史語言設定並渲染
+            setLang(currentLang);
             setAlignment(currentAlign);
         </script>
     </body>
     </html>
     """
     
-    # 動態變數注入
     final_html = html_template.replace('__APP_DATA_HERE__', js_string)
     final_html = final_html.replace('__CURRENT_TAG__', tag)
     final_html = final_html.replace('__DASHBOARD_DISPLAY_NAV__', dashboard_display_nav)
