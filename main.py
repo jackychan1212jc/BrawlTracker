@@ -1,36 +1,22 @@
-import urllib.parse
-import requests
-import time
-import threading
-from collections import deque
 import os
-import re
-import webbrowser
 import json
-import socket
-import shutil
-from datetime import datetime, timedelta
+import requests
 import pandas as pd
-from openpyxl.utils import get_column_letter
-from openpyxl.styles import Alignment
-
-# --- 新增的 Web 伺服器套件 ---
+from datetime import datetime, timedelta
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, HTMLResponse
-import uvicorn
+from fastapi.responses import HTMLResponse
+from supabase import create_client, Client
 
-# --- 1. 基本設定 ---
-API_TOKEN = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6IjZlZDFjMzQ0LTFlMDEtNGIwNS04NzNkLTEzODNiZDI5ZjBlNSIsImlhdCI6MTc4Njk4ODU3Niwic3ViIjoiZGV2ZWxvcGVyLzA4YmE4NjhhLTNlOGItNDMwMS1iNmE2LWJkODExMTgxZTliNyIsInNjb3BlcyI6WyJicmF3bHN0YXJzIl0sImxpbWl0cyI6W3sidGllciI6ImRldmVsb3Blci9zaWx2ZXIiLCJ0eXBlIjoidGhyb3R0bGluZyJ9LHsiY2lkcnMiOlsiNjAuMjQ2LjE3NC4xMjUiXSwidHlwZSI6ImNsaWVudCJ9XX0.FG5pYWvXFqxLEF20SyIgjzGdDrAuod6C36gTJ6isVoQQ_-7SrDboWO-Y6qMc_pOH0mdsM46KdUX6p11mp64W0w'
+app = FastAPI()
 
-ACCOUNTS = {
-    '大號': {'tag': '#9P2GP0UL9', 'excel': r"D:\我的荒野亂鬥戰績_自動更新版.xlsx"},
-    '小號': {'tag': '#2QGP2L0VP', 'excel': r"D:\我的荒野亂鬥戰績_小號_自動更新版.xlsx"}
-}
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip()
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "").strip()
+BRAWL_API_TOKEN = os.environ.get("BRAWL_API_TOKEN", "").strip()
 
-headers_official = {'Authorization': f'Bearer {API_TOKEN}'}
-headers_ninja = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-}
+try:
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+except Exception:
+    supabase = None
 
 MODE_TRANSLATION = {
     'gemGrab': '寶石爭奪戰', 'brawlBall': '亂鬥足球', 'bounty': '搶星大作戰',
@@ -44,39 +30,66 @@ MODE_TRANSLATION = {
 PVE_MODES = ['lastStand', 'bossFight', 'roboRumble', 'bigGame', 'megaBoss']
 TARGET_SIX_MODES = ['搶星大作戰', '寶石爭奪戰', '金庫攻防戰', '亂鬥足球', '據點搶奪戰', '極限淘汰賽']
 
+# 伺服器啟動時間，用來當作「本次區間」的切分點
 startup_time_local = datetime.utcnow() + timedelta(hours=8)
 current_local_time_str = startup_time_local.strftime('%Y-%m-%d %H:%M:%S')
-
-account_stats = {
-    '大號': {'start_trophies': None, 'start_elo': None, 'last_time': None, 'last_raw_time': "", 'current_trophies': 0, 'diff_str': "+0", 'elo_str': "尚未更新", 'elo_diff_str': "+0", '3v3_victories': 0, 'elo_tier': 'UNKNOWN', 'ui_session': {}, 'ui_all_time': {}, 'ranked_seasons_session': {}, 'ranked_seasons_all_time': {}, 'startup_formatted_time': current_local_time_str, 'owned_brawlers': []},
-    '小號': {'start_trophies': None, 'start_elo': None, 'last_time': None, 'last_raw_time': "", 'current_trophies': 0, 'diff_str': "+0", 'elo_str': "尚未更新", 'elo_diff_str': "+0", '3v3_victories': 0, 'elo_tier': 'UNKNOWN', 'ui_session': {}, 'ui_all_time': {}, 'ranked_seasons_session': {}, 'ranked_seasons_all_time': {}, 'startup_formatted_time': current_local_time_str, 'owned_brawlers': []}
-}
-
-# 補回網頁版生成所需的預設變數
-current_display_account = '大號'
-current_view_mode = 'session'
-
-base_dir = r"D:\Brawl Stars Win Rate\py\Brawl_Tactics_Dashboard"
-if not os.path.exists(base_dir):
-    try: os.makedirs(base_dir)
-    except: pass
-
-last_sync_time_str = "等待同步..."
-last_new_data_real_time = time.time()
-
-network_ping_api = 0
-network_ping_tokyo = 0
-network_ping_hk = 0
-MAX_PING_HISTORY = 60
-ping_history = {
-    'api': deque(maxlen=MAX_PING_HISTORY),
-    'tokyo': deque(maxlen=MAX_PING_HISTORY),
-    'hk': deque(maxlen=MAX_PING_HISTORY)
-}
 
 def get_wr(w, l, d=0):
     total = w + l + d
     return f"{w/total*100:.1f}%" if total > 0 else "0.0%"
+
+def fetch_and_save_data(target_tag: str):
+    if not supabase or not BRAWL_API_TOKEN:
+        return
+    tag_formatted = target_tag.replace("#", "%23")
+    url = f"https://bsproxy.royaleapi.dev/v1/players/{tag_formatted}/battlelog"
+    headers = {"Authorization": f"Bearer {BRAWL_API_TOKEN}"}
+    
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code != 200: return
+        
+        battles = response.json().get("items", [])
+        for battle in battles:
+            battle_time = battle.get("battleTime")
+            if not battle_time: continue
+            
+            existing = supabase.table("battlelog").select("id").eq("battle_time", battle_time).eq("account", target_tag).execute()
+            if len(existing.data) > 0:
+                continue
+                
+            b = battle.get("battle") or {}
+            event = battle.get("event") or {}
+            
+            my_brawler = "未知"
+            brawler_trophies = "0"
+            players_list = []
+            
+            if "teams" in b:
+                for team in b["teams"]: players_list.extend(team)
+            elif "players" in b:
+                players_list = b["players"]
+                
+            for player in players_list:
+                if player.get("tag") == target_tag:
+                    b_data = player.get("brawler") or {}
+                    my_brawler = b_data.get("name", "未知")
+                    brawler_trophies = str(b_data.get("trophies", "0"))
+
+            new_record = {
+                "account": target_tag,
+                "battle_time": battle_time,
+                "mode": event.get("mode", "unknown"),
+                "map": event.get("map", "unknown"),
+                "type": b.get("type", "unknown"),
+                "my_brawler": my_brawler,
+                "brawler_trophies": brawler_trophies,
+                "result": b.get("result", "draw"),
+                "trophy_change": str(b.get("trophyChange", 0))
+            }
+            supabase.table("battlelog").insert(new_record).execute()
+    except Exception:
+        pass
 
 def group_ranked_sets(df):
     if df.empty: return df
@@ -139,16 +152,9 @@ def process_and_group_dataframe(df):
     def determine_classification(row):
         raw_type = str(row.get('類型', ''))
         raw_mode = str(row.get('模式', ''))
-        is_box_event = row.get('是否寶箱活動', False)
-        my_team = str(row.get('我方陣容', ''))
-        enemy_team = str(row.get('敵方陣容', ''))
-        brawlers = [x.strip() for x in (my_team + ',' + enemy_team).split(',') if x.strip() and x.strip() != 'nan']
-        is_mirror = len(brawlers) > 1 and len(set(brawlers)) == 1
         base_mode_zh = MODE_TRANSLATION.get(raw_mode, raw_mode)
         
-        if is_mirror: ui_type = '鏡像亂鬥'
-        elif is_box_event: ui_type = '寶箱活動'
-        elif raw_type == 'challenge': ui_type = '挑戰'
+        if raw_type == 'challenge': ui_type = '挑戰'
         elif raw_mode in PVE_MODES: ui_type = '特別活動'
         elif raw_type in ['soloRanked', 'teamRanked']: ui_type = '排位賽'
         elif raw_type == 'ranked': ui_type = '一般模式'
@@ -160,8 +166,8 @@ def process_and_group_dataframe(df):
 
 def build_ui_dict(df_grouped):
     ui_data = {'r_wins': 0, 'r_losses': 0, 'r_draws': 0, 't_wins': 0, 't_losses': 0, 't_draws': 0,
-               'box_wins': 0, 'box_losses': 0, 'box_draws': 0, 'c_wins': 0, 'c_losses': 0, 'c_draws': 0,
-               's_wins': 0, 's_losses': 0, 's_draws': 0, 'm_wins': 0, 'm_losses': 0, 'm_draws': 0, 'brawler_stats': {}, 'map_stats': {}}
+               'c_wins': 0, 'c_losses': 0, 'c_draws': 0, 's_wins': 0, 's_losses': 0, 's_draws': 0, 
+               'brawler_stats': {}, 'map_stats': {}}
     if df_grouped is None or df_grouped.empty: return ui_data
 
     ui_data['r_wins'] = len(df_grouped[(df_grouped['UI動態分類'] == '排位賽') & (df_grouped['戰果'] == 'victory')])
@@ -170,18 +176,12 @@ def build_ui_dict(df_grouped):
     ui_data['t_wins'] = len(df_grouped[(df_grouped['UI動態分類'] == '一般模式') & (df_grouped['戰果'] == 'victory')])
     ui_data['t_losses'] = len(df_grouped[(df_grouped['UI動態分類'] == '一般模式') & (df_grouped['戰果'] == 'defeat')])
     ui_data['t_draws'] = len(df_grouped[(df_grouped['UI動態分類'] == '一般模式') & (df_grouped['戰果'] == 'draw')])
-    ui_data['box_wins'] = len(df_grouped[(df_grouped['UI動態分類'] == '寶箱活動') & (df_grouped['戰果'] == 'victory')])
-    ui_data['box_losses'] = len(df_grouped[(df_grouped['UI動態分類'] == '寶箱活動') & (df_grouped['戰果'] == 'defeat')])
-    ui_data['box_draws'] = len(df_grouped[(df_grouped['UI動態分類'] == '寶箱活動') & (df_grouped['戰果'] == 'draw')])
     ui_data['c_wins'] = len(df_grouped[(df_grouped['UI動態分類'] == '挑戰') & (df_grouped['戰果'] == 'victory')])
     ui_data['c_losses'] = len(df_grouped[(df_grouped['UI動態分類'] == '挑戰') & (df_grouped['戰果'] == 'defeat')])
     ui_data['c_draws'] = len(df_grouped[(df_grouped['UI動態分類'] == '挑戰') & (df_grouped['戰果'] == 'draw')])
     ui_data['s_wins'] = len(df_grouped[(df_grouped['UI動態分類'] == '特別活動') & (df_grouped['戰果'] == 'victory')])
     ui_data['s_losses'] = len(df_grouped[(df_grouped['UI動態分類'] == '特別活動') & (df_grouped['戰果'] == 'defeat')])
     ui_data['s_draws'] = len(df_grouped[(df_grouped['UI動態分類'] == '特別活動') & (df_grouped['戰果'] == 'draw')])
-    ui_data['m_wins'] = len(df_grouped[(df_grouped['UI動態分類'] == '鏡像亂鬥') & (df_grouped['戰果'] == 'victory')])
-    ui_data['m_losses'] = len(df_grouped[(df_grouped['UI動態分類'] == '鏡像亂鬥') & (df_grouped['戰果'] == 'defeat')])
-    ui_data['m_draws'] = len(df_grouped[(df_grouped['UI動態分類'] == '鏡像亂鬥') & (df_grouped['戰果'] == 'draw')])
     
     b_stats = {}
     m_stats = {}
@@ -261,19 +261,17 @@ def build_ranked_ui_dict(df_grouped):
 def build_js_view_data(ui_data):
     r_wins, r_losses, r_draws = ui_data.get('r_wins', 0), ui_data.get('r_losses', 0), ui_data.get('r_draws', 0)
     t_wins, t_losses, t_draws = ui_data.get('t_wins', 0), ui_data.get('t_losses', 0), ui_data.get('t_draws', 0)
-    box_w, box_l, box_d = ui_data.get('box_wins', 0), ui_data.get('box_losses', 0), ui_data.get('box_draws', 0)
     c_wins, c_losses, c_draws = ui_data.get('c_wins', 0), ui_data.get('c_losses', 0), ui_data.get('c_draws', 0)
     s_wins, s_losses, s_draws = ui_data.get('s_wins', 0), ui_data.get('s_losses', 0), ui_data.get('s_draws', 0)
-    m_wins, m_losses, m_draws = ui_data.get('m_wins', 0), ui_data.get('m_losses', 0), ui_data.get('m_draws', 0)
     brawler_stats = ui_data.get('brawler_stats', {})
     
-    total_wins = r_wins + t_wins + box_w + c_wins + s_wins + m_wins
-    total_losses = r_losses + t_losses + box_l + c_losses + s_losses + m_losses
-    total_draws = r_draws + t_draws + box_d + c_draws + s_draws + m_draws
+    total_wins = r_wins + t_wins + c_wins + s_wins 
+    total_losses = r_losses + t_losses + c_losses + s_losses 
+    total_draws = r_draws + t_draws + c_draws + s_draws 
     
-    merged_s_wins = s_wins + box_w + c_wins + m_wins
-    merged_s_losses = s_losses + box_l + c_losses + m_losses
-    merged_s_draws = s_draws + box_d + c_draws + m_draws
+    merged_s_wins = s_wins + c_wins 
+    merged_s_losses = s_losses + c_losses 
+    merged_s_draws = s_draws + c_draws 
     
     summary = {
         'ranked': {'txt': f"{r_wins}W - {r_losses}L ({get_wr(r_wins, r_losses, r_draws)})", 'w': r_wins, 'l': r_losses, 'd': r_draws},
@@ -283,15 +281,13 @@ def build_js_view_data(ui_data):
     }
     
     brawlers = []
-    for b_type_zh, icon in [('排位賽', '🏅'), ('一般模式', '⏳'), ('挑戰', '🎯'), ('寶箱活動', '🎁'), ('特別活動', '🎪'), ('鏡像亂鬥', '🎭')]:
+    for b_type_zh, icon in [('排位賽', '🏅'), ('一般模式', '⏳'), ('挑戰', '🎯'), ('特別活動', '🎪')]:
         type_brawlers = {}
         for b_name, b_data in brawler_stats.items():
             if b_type_zh in b_data.get('types', {}): type_brawlers[b_name] = b_data['types'][b_type_zh]
         if not type_brawlers: continue
         
-        display_title = '全新英雄寶箱活動！' if b_type_zh == '寶箱活動' else b_type_zh
-        cat_dict = {'icon': icon, 'title': display_title, 'items': []}
-        
+        cat_dict = {'icon': icon, 'title': b_type_zh, 'items': []}
         sorted_brawlers = sorted(type_brawlers.items(), key=lambda item: (item[1]['W'] + item[1]['L'] + item[1]['D'], item[1]['W']), reverse=True)
         for b_name, b_stats_item in sorted_brawlers:
             w, l, d = b_stats_item['W'], b_stats_item['L'], b_stats_item['D']
@@ -302,7 +298,7 @@ def build_js_view_data(ui_data):
     for b_name, b_data in brawler_stats.items():
         tot_w, tot_l, tot_d = b_data['W'], b_data['L'], b_data['D']
         b_dict = {'summary': f"{tot_w}W - {tot_l}L ({get_wr(tot_w, tot_l, tot_d)})", 'w': tot_w, 'l': tot_l, 'd': tot_d, 'cats': []}
-        for b_type_zh, icon in [('排位賽', '🏅'), ('一般模式', '⏳'), ('挑戰', '🎯'), ('寶箱活動', '🎁'), ('特別活動', '🎪'), ('鏡像亂鬥', '🎭')]:
+        for b_type_zh, icon in [('排位賽', '🏅'), ('一般模式', '⏳'), ('挑戰', '🎯'), ('特別活動', '🎪')]:
             if b_type_zh in b_data.get('types', {}):
                 t_data = b_data['types'][b_type_zh]
                 cat_js = {'icon': icon, 'title': b_type_zh, 'wins': t_data['W'], 'losses': t_data['L'], 'wr': get_wr(t_data['W'], t_data['L'], t_data['D']), 'w': t_data['W'], 'l': t_data['L'], 'd': t_data['D'], 'modes': []}
@@ -317,9 +313,9 @@ def build_js_view_data(ui_data):
         modes = {}
         if cat == '一般模式':
             for m in TARGET_SIX_MODES:
-                mw = ui_data.get('map_stats', {}).get('一般模式', {}).get('modes', {}).get(m, {}).get('W', 0) + ui_data.get('map_stats', {}).get('寶箱活動', {}).get('modes', {}).get(m, {}).get('W', 0)
-                ml = ui_data.get('map_stats', {}).get('一般模式', {}).get('modes', {}).get(m, {}).get('L', 0) + ui_data.get('map_stats', {}).get('寶箱活動', {}).get('modes', {}).get(m, {}).get('L', 0)
-                md = ui_data.get('map_stats', {}).get('一般模式', {}).get('modes', {}).get(m, {}).get('D', 0) + ui_data.get('map_stats', {}).get('寶箱活動', {}).get('modes', {}).get(m, {}).get('D', 0)
+                mw = ui_data.get('map_stats', {}).get('一般模式', {}).get('modes', {}).get(m, {}).get('W', 0)
+                ml = ui_data.get('map_stats', {}).get('一般模式', {}).get('modes', {}).get(m, {}).get('L', 0)
+                md = ui_data.get('map_stats', {}).get('一般模式', {}).get('modes', {}).get(m, {}).get('D', 0)
                 modes[m] = {'W': mw, 'L': ml, 'D': md}
         else:
             cat_data = ui_data.get('map_stats', {}).get(cat, {})
@@ -343,37 +339,111 @@ def build_js_view_data(ui_data):
 
     return {'summary': summary, 'brawlers': brawlers, 'brawler_details': brawler_details, 'map_stats': js_map_stats}
 
-def generate_interactive_main_page(current_acc, current_view):
-    app_data = {}
-    for acc in ['大號', '小號']:
-        stats = account_stats[acc]
-        color = "#00FFAA" if acc == '大號' else "#00CCFF"
-        acc_dict = {
-            'color': color,
-            'trophies': stats.get('current_trophies', 0),
-            'diff_trophies': stats.get('diff_str', '+0'),
-            'victories_3v3': stats.get('3v3_victories', 0),
-            'elo': stats.get('elo_str', '尚未更新'),
-            'diff_elo': stats.get('elo_diff_str', '+0'),
-            'tier': stats.get('elo_tier', 'UNKNOWN'),
-            'session': build_js_view_data(stats.get('ui_session', {})),
-            'all_time': build_js_view_data(stats.get('ui_all_time', {})),
-            'ranked_seasons_session': stats.get('ranked_seasons_session', {}),
-            'ranked_seasons_all_time': stats.get('ranked_seasons_all_time', {})
-        }
-        app_data[acc] = acc_dict
 
-    js_string = json.dumps(app_data, ensure_ascii=False)
+@app.get("/")
+def pro_dashboard(tag: str = ""):
+    if not supabase:
+        return HTMLResponse("<h1>資料庫連線失敗，請檢查環境變數。</h1>")
+
+    tag = tag.strip().upper()
+    if tag and not tag.startswith("#"):
+        tag = "#" + tag
+
+    # UI 顯示狀態切換 (無標籤時顯示歡迎頁，有標籤才顯示資料)
+    dashboard_display_nav = "flex" if tag else "none"
+    dashboard_display = "block" if tag else "none"
+    welcome_display = "block" if not tag else "none"
+    refresh_status_text = "等待玩家輸入標籤"
     
-    ping_payload = {
-        'current': {'api': network_ping_api, 'tokyo': network_ping_tokyo, 'hk': network_ping_hk},
-        'history': {
-            'api': list(ping_history['api']),
-            'tokyo': list(ping_history['tokyo']),
-            'hk': list(ping_history['hk'])
+    empty_view = {'summary': {'ranked': {'txt': "0W - 0L (0.0%)", 'w': 0, 'l': 0, 'd': 0}, 'casual': {'txt': "0W - 0L (0.0%)", 'w': 0, 'l': 0, 'd': 0}, 'special': {'txt': "0W - 0L (0.0%)", 'w': 0, 'l': 0, 'd': 0}, 'total': {'txt': "0W - 0L (0.0%)", 'w': 0, 'l': 0, 'd': 0}}, 'brawlers': [], 'brawler_details': {}, 'map_stats': []}
+    
+    current_trophies = 0
+    victories_3v3 = 0
+    elo_val = 0
+    tier = "UNKNOWN"
+    ui_all_time = empty_view
+    ui_session = empty_view
+    ranked_seasons_all_time = {}
+    ranked_seasons_session = {}
+
+    if tag:
+        refresh_status_text = "資料庫同步完成"
+        
+        # 自動抓取並儲存到 Supabase
+        fetch_and_save_data(tag)
+
+        # 呼叫 API 獲取最新的個人公開資訊
+        tag_formatted = tag.replace("#", "%23")
+        url = f"https://bsproxy.royaleapi.dev/v1/players/{tag_formatted}"
+        headers = {"Authorization": f"Bearer {BRAWL_API_TOKEN}"}
+        
+        current_season_id = 48
+        try:
+            res = requests.get(url, headers=headers)
+            if res.status_code == 200:
+                data = res.json()
+                current_trophies = data.get("trophies", 0)
+                victories_3v3 = data.get("3vs3Victories", 0)
+                elo_val = data.get("rankedElo", 0)
+                tier = data.get("rankedRankName", "UNKNOWN")
+                current_season_id = data.get('rankedSeasonId', 48)
+        except Exception:
+            pass
+            
+        # 從 Supabase 撈取該標籤的歷史戰績
+        res = supabase.table("battlelog").select("*").eq("account", tag).order("battle_time", desc=True).execute()
+        df = pd.DataFrame(res.data)
+        
+        if not df.empty:
+            df = df.rename(columns={
+                'battle_time': '對戰時間',
+                'mode': '模式',
+                'map': '地圖',
+                'type': '類型',
+                'my_brawler': '我方英雄',
+                'result': '戰果',
+                'brawler_trophies': '英雄盃數'
+            })
+            
+            def check_bo3(row):
+                if row.get('類型') in ['soloRanked', 'teamRanked']:
+                    try: return 'BO3' if int(row.get('英雄盃數', 0)) >= 13 else 'BO1'
+                    except: return 'BO3'
+                return '一般'
+            
+            def determine_season(r):
+                if r.get('類型') not in ['soloRanked', 'teamRanked']: return ''
+                dt_str = str(r.get('對戰時間', ''))
+                try:
+                    if datetime.strptime(dt_str, '%Y%m%dT%H%M%S.000Z') <= datetime(2026, 8, 19, 23, 59, 59): 
+                        return '47'
+                    return str(current_season_id)
+                except: return '48'
+
+            df['排位機制'] = df.apply(check_bo3, axis=1)
+            df['賽季'] = df.apply(determine_season, axis=1)
+            
+            df_all_time_grouped = process_and_group_dataframe(df)
+            ui_all_time = build_ui_dict(df_all_time_grouped)
+            ranked_seasons_all_time = build_ranked_ui_dict(df_all_time_grouped)
+            
+            df_session = df[df['對戰時間'] > current_local_time_str.replace('-', '').replace(' ', 'T').replace(':', '') + '.000Z'].copy()
+            df_session_grouped = process_and_group_dataframe(df_session)
+            ui_session = build_ui_dict(df_session_grouped)
+            ranked_seasons_session = build_ranked_ui_dict(df_session_grouped)
+
+    app_data = {
+        "current_player": {
+            'color': "#00FFAA", 'trophies': current_trophies, 'diff_trophies': '+0', 
+            'victories_3v3': victories_3v3, 'elo': str(elo_val), 'diff_elo': '+0', 'tier': tier,
+            'session': build_js_view_data(ui_session) if tag else empty_view, 
+            'all_time': build_js_view_data(ui_all_time) if tag else empty_view,
+            'ranked_seasons_session': ranked_seasons_session, 
+            'ranked_seasons_all_time': ranked_seasons_all_time
         }
     }
-    js_ping_string = json.dumps(ping_payload, ensure_ascii=False)
+    
+    js_string = json.dumps(app_data, ensure_ascii=False)
     
     html_template = """
     <!DOCTYPE html>
@@ -382,37 +452,31 @@ def generate_interactive_main_page(current_acc, current_view):
         <meta charset="UTF-8">
         <title>Brawl Tactics Dashboard</title>
         <style>
-            body { background-color: #121212; color: #FFFFFF; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px 8vw; margin: 0; display: flex; justify-content: center; }
+            /* 加入 overflow-y: scroll 解決畫面橫跳問題 */
+            body { background-color: #121212; color: #FFFFFF; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px 8vw; margin: 0; display: flex; justify-content: center; overflow-y: scroll; }
             body.no-scroll { overflow: hidden; }
 
             .container { width: 100%; max-width: 900px; background-color: #1A1F24; border-radius: 15px; border: 1px solid #2A323C; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
             
-            .nav-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+            .nav-bar { justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
             .nav-group { display: flex; gap: 10px; background-color: #121212; padding: 5px; border-radius: 10px; border: 1px solid #2A323C; }
             .nav-btn { background: none; border: none; color: #555555; font-size: 16px; font-weight: bold; cursor: pointer; padding: 8px 20px; border-radius: 6px; transition: all 0.3s; font-family: 'Consolas', monospace; }
             .nav-btn:hover { background-color: #2A323C; color: #FFFFFF !important; }
             .nav-btn.active { background-color: #2A323C; }
             
             .search-box { display: flex; gap: 10px; }
-            .search-box input { background-color: #121212; border: 1px solid #2A323C; color: var(--theme-color); padding: 8px 15px; border-radius: 8px; font-family: 'Consolas', monospace; font-size: 16px; outline: none; transition: border-color 0.3s; width: 250px; }
+            .search-box input { background-color: #121212; border: 1px solid #2A323C; color: var(--theme-color); padding: 8px 15px; border-radius: 8px; font-family: 'Consolas', monospace; font-size: 16px; outline: none; transition: border-color 0.3s; }
             .search-box input:focus { border-color: var(--theme-color); }
             .search-box button { background-color: #1A1F24; border: 1px solid #2A323C; color: #FFFFFF; padding: 8px 15px; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-family: 'Consolas', monospace; font-weight: bold; }
             .search-box button:hover { background-color: var(--theme-color); color: #121212; }
 
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--theme-color); padding-bottom: 20px; margin-bottom: 30px; transition: border-color 0.3s; }
-            .header h1 { margin: 0; color: var(--theme-color); font-size: 32px; text-transform: uppercase; letter-spacing: 2px; transition: color 0.3s; min-width: 360px; }
-            .header-info { display: flex; flex-direction: row; align-items: center; gap: 15px; }
-
+            .header { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; border-bottom: 3px solid var(--theme-color); padding-bottom: 20px; margin-bottom: 30px; transition: border-color 0.3s; }
+            
             .top-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
             .stat-box { background-color: #121212; border-radius: 12px; padding: 20px; text-align: center; border-left: 4px solid var(--theme-color); transition: border-color 0.3s; }
             .stat-box .title { font-size: 16px; color: #AAAAAA; margin-bottom: 8px; font-weight: bold; }
             .stat-box .value { font-size: 24px; font-weight: bold; color: #FFFFFF; font-family: 'Consolas', monospace; transition: text-shadow 0.3s, color 0.3s; }
             .stat-box .diff { font-size: 14px; color: var(--theme-color); transition: color 0.3s; }
-
-            /* --- 🌟 排位賽專屬放大樣式 (僅放大文字，保持外框比例) --- */
-            .stat-box.enlarged .title { font-size: 18px; margin-bottom: 6px; }
-            .stat-box.enlarged .value { font-size: 32px; }
-            .stat-box.enlarged .diff { font-size: 16px; }
             
             .summary-section { background-color: #121212; border-radius: 12px; padding: 25px; margin-bottom: 40px; }
             
@@ -450,7 +514,6 @@ def generate_interactive_main_page(current_acc, current_view):
             ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; border: 2px solid #1A1F24; }
             ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
 
-            /* 模態彈窗樣式 */
             .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); backdrop-filter: blur(5px); justify-content: center; align-items: center; }
             .modal-content { max-height: 95vh; overflow-y: auto; background-color: #1A1F24; width: 95%; max-width: 500px; border-radius: 15px; border: 1px solid #2A323C; box-shadow: 0 10px 40px rgba(0,0,0,0.8); transition: max-width 0.3s ease; }
             .modal-header { background: linear-gradient(135deg, #1A1F24 0%, #2A323C 100%); padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--theme-color); position: sticky; top: 0; z-index: 10; }
@@ -474,10 +537,11 @@ def generate_interactive_main_page(current_acc, current_view):
     </head>
     <body>
         <div class="container">
-            <div class="nav-bar">
-                <div class="nav-group" id="acc-nav">
-                    <button class="nav-btn" onclick="switchAccount('大號')" id="btn-大號">大號</button>
-                    <button class="nav-btn" onclick="switchAccount('小號')" id="btn-小號">小號</button>
+            
+            <div class="nav-bar" style="display: __DASHBOARD_DISPLAY_NAV__;">
+                <div class="nav-group">
+                    <!-- 固定寬度防止排版推擠 -->
+                    <button id="btn-page-toggle" class="nav-btn active" style="color: var(--theme-color); width: 170px; text-align: center;" onclick="togglePage()">▶ 切換至排位賽</button>
                 </div>
                 
                 <div class="nav-group" id="display-nav">
@@ -498,54 +562,50 @@ def generate_interactive_main_page(current_acc, current_view):
             </div>
 
             <div class="header">
-                <div class="header-info">
-                    <h1 id="global-title">戰術主控台</h1>
-                    <button id="btn-page-toggle" class="nav-btn" style="background-color: #2A323C; color: var(--theme-color); font-weight: bold; padding: 6px 15px; width: 150px; text-align: center;" onclick="togglePage()">▶ 排位賽專頁</button>
-                </div>
+                <form action="/" method="GET" style="display:flex; align-items:center; gap: 10px; margin:0; flex-wrap:wrap;">
+                    <span style="color:var(--theme-color); font-size:24px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3);">請輸入玩家標籤：</span>
+                    <input type="text" name="tag" value="__CURRENT_TAG__" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 15px; border-radius:8px; font-family:'Consolas', monospace; font-size:20px; outline:none; text-transform:uppercase; width:200px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
+                    <button type="submit" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:18px; padding:8px 25px; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
+                </form>
                 
-                <div class="search-box" style="margin-bottom: 0;">
-                    <input type="text" id="searchInput" placeholder="🔍 搜尋英雄、地圖或 ping" onkeypress="if(event.key === 'Enter') handleSearch()">
+                <div class="search-box" style="margin-bottom: 0; display: __DASHBOARD_DISPLAY__;">
+                    <input type="text" id="searchInput" placeholder="🔍 搜尋英雄、地圖" onkeypress="if(event.key === 'Enter') handleSearch()" style="width: 280px;">
                     <button onclick="handleSearch()">查詢</button>
                 </div>
             </div>
 
-            <div id="page-main" class="page-container active">
-                <div class="top-stats">
-                    <div class="stat-box"><div class="title">🏆 總盃數</div><div class="value" id="val-trophies">- <span class="diff" id="diff-trophies">(-)</span></div></div>
-                    <div class="stat-box"><div class="title">⚔️ 3V3 勝場</div><div class="value" id="val-3v3">-</div></div>
-                    <div class="stat-box"><div class="title">🎯 排位 Elo</div><div class="value" id="val-elo">- <span class="diff" id="diff-elo">(-)</span></div></div>
-                    <div class="stat-box"><div class="title">⭐ 排位段位</div><div class="value" id="val-tier">-</div></div>
-                </div>
-                
-                <div class="summary-section" id="summary-section"></div>
-                <div class="brawler-grid" id="brawler-grid"></div>
+            <div style="display: __WELCOME_DISPLAY__; text-align: center; padding: 80px 20px;">
+                <div style="font-size: 60px; margin-bottom: 20px;">🎮</div>
+                <h2 style="color:var(--theme-color); font-size:32px; margin-bottom:15px; letter-spacing: 2px;">歡迎使用戰術主控台</h2>
+                <p style="color:#AAAAAA; font-size:18px; line-height: 1.6;">這是一套強大的 Brawl Stars 電競級數據分析系統。<br>請在上方輸入玩家標籤 (包含 #) 以建立或查看該玩家的專屬戰報。</p>
             </div>
 
-            <div id="page-ranked" class="page-container">
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px;">
-                    <div class="stat-box" style="text-align: left; display: flex; flex-direction: column; justify-content: center; gap: 8px;">
-                        <div style="font-size:14px; color:#AAAAAA; font-weight:bold; margin-bottom:4px;">📶 即時網路監測</div>
-                        <div style="display:flex; justify-content:space-between; font-family:'Consolas', monospace; font-size:16px;">
-                            <span>官方 API:</span> <span id="val-ping-api" style="font-weight:bold;">--ms</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; font-family:'Consolas', monospace; font-size:16px;">
-                            <span>東京節點:</span> <span id="val-ping-tokyo" style="font-weight:bold;">--ms</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; font-family:'Consolas', monospace; font-size:16px;">
-                            <span>香港節點:</span> <span id="val-ping-hk" style="font-weight:bold;">--ms</span>
-                        </div>
+            <div id="dashboard-wrapper" style="display: __DASHBOARD_DISPLAY__;">
+                <div id="page-main" class="page-container active">
+                    <div class="top-stats">
+                        <div class="stat-box"><div class="title">🏆 總盃數</div><div class="value" id="val-trophies">- <span class="diff" id="diff-trophies">(-)</span></div></div>
+                        <div class="stat-box"><div class="title">⚔️ 3V3 勝場</div><div class="value" id="val-3v3">-</div></div>
+                        <div class="stat-box"><div class="title">🎯 排位 Elo</div><div class="value" id="val-elo">- <span class="diff" id="diff-elo">(-)</span></div></div>
+                        <div class="stat-box"><div class="title">⭐ 排位段位</div><div class="value" id="val-tier">-</div></div>
                     </div>
                     
-                    <div class="stat-box enlarged" style="display: flex; flex-direction: column; justify-content: center;"><div class="title">🎯 排位 Elo</div><div class="value" id="val-elo-rk">- <span class="diff" id="diff-elo-rk">(-)</span></div></div>
-                    <div class="stat-box enlarged" style="display: flex; flex-direction: column; justify-content: center;"><div class="title">⭐ 排位段位</div><div class="value" id="val-tier-rk">-</div></div>
+                    <div class="summary-section" id="summary-section"></div>
+                    <div class="brawler-grid" id="brawler-grid"></div>
                 </div>
-                
-                <div class="summary-section" id="summary-ranked-only" style="margin-bottom: 40px; padding: 15px 25px;"></div>
-                
-                <div id="ranked-seasons-container"></div>
+
+                <div id="page-ranked" class="page-container">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px;">
+                        <div class="stat-box enlarged" style="display: flex; flex-direction: column; justify-content: center; padding: 30px;"><div class="title">🎯 排位 Elo</div><div class="value" id="val-elo-rk">- <span class="diff" id="diff-elo-rk">(-)</span></div></div>
+                        <div class="stat-box enlarged" style="display: flex; flex-direction: column; justify-content: center; padding: 30px;"><div class="title">⭐ 排位段位</div><div class="value" id="val-tier-rk">-</div></div>
+                    </div>
+                    
+                    <div class="summary-section" id="summary-ranked-only" style="margin-bottom: 40px; padding: 15px 25px;"></div>
+                    
+                    <div id="ranked-seasons-container"></div>
+                </div>
             </div>
 
-            <div class="footer">伺服器自動生成於背景執行中... <br><span id="refresh-status" style="color:var(--theme-color);">畫面每 30 秒自動刷新最新戰況</span></div>
+            <div class="footer">系統運作於 Render 雲端環境 <br><span id="refresh-status" style="color:var(--theme-color);">__REFRESH_TEXT__</span></div>
         </div>
 
         <div id="searchModal" class="modal">
@@ -560,13 +620,11 @@ def generate_interactive_main_page(current_acc, current_view):
 
         <script>
             let appData = __APP_DATA_HERE__;
-            let currentPingData = __PING_DATA_HERE__;
             window.appData = appData;
             
-            let currentAcc = sessionStorage.getItem('currentAcc') || "大號";
-            let currentView = sessionStorage.getItem('currentView') || "session";
+            let currentView = sessionStorage.getItem('currentView') || "all_time";
             let currentAlign = localStorage.getItem('pageAlign') || 'center';
-            let currentDisplayMode = localStorage.getItem('displayMode') || 'data'; 
+            let currentDisplayMode = localStorage.getItem('displayMode') || 'bar'; 
             let activePage = sessionStorage.getItem('activePage') || 'main';
             
             const TARGET_SIX_MODES = ['搶星大作戰', '寶石爭奪戰', '金庫攻防戰', '亂鬥足球', '據點搶奪戰', '極限淘汰賽'];
@@ -580,7 +638,6 @@ def generate_interactive_main_page(current_acc, current_view):
                 activePage = activePage === 'main' ? 'ranked' : 'main';
                 sessionStorage.setItem('activePage', activePage);
                 applyPageState();
-                render();
             }
 
             function applyPageState() {
@@ -588,15 +645,11 @@ def generate_interactive_main_page(current_acc, current_view):
                 document.getElementById('page-ranked').classList.toggle('active', activePage === 'ranked');
                 
                 const btn = document.getElementById('btn-page-toggle');
-                const title = document.getElementById('global-title');
-                
-                if (btn && title) {
+                if (btn) {
                     if (activePage === 'main') {
-                        btn.innerHTML = '▶ 排位賽專頁';
-                        title.innerText = `${currentAcc} 戰術主控台`;
+                        btn.innerHTML = '▶ 切換至排位賽';
                     } else {
-                        btn.innerHTML = '◀ 返回主頁';
-                        title.innerText = `${currentAcc} 排位賽深度解析`;
+                        btn.innerHTML = '◀ 返回總戰績';
                     }
                 }
             }
@@ -642,7 +695,6 @@ def generate_interactive_main_page(current_acc, current_view):
                         <div style="text-align:center; padding: 50px 20px; background-color:#121212; border-radius:12px; margin-top:20px; border:1px dashed #2A323C;">
                             <div style="font-size:32px; margin-bottom:10px;">${isSession ? '⏳' : '📊'}</div>
                             <div style="font-size:18px; color:#AAA; font-weight:bold;">${isSession ? '本次區間尚未進行任何排位賽' : '資料庫中尚無排位賽紀錄'}</div>
-                            <div style="font-size:13px; color:#666; margin-top:5px;">${isSession ? '打完排位賽後將即時在此顯示本次實時對戰！' : ''}</div>
                         </div>`;
                     return;
                 }
@@ -662,14 +714,7 @@ def generate_interactive_main_page(current_acc, current_view):
                         </h2>
                         <div class="brawler-grid">`;
                     
-                    const modeColors = {
-                        '搶星大作戰': '#01cfff',
-                        '寶石爭奪戰': '#9b3df3',
-                        '金庫攻防戰': '#d65cd3',
-                        '亂鬥足球': '#8ca0df',
-                        '據點搶奪戰': '#e33c50',
-                        '極限淘汰賽': '#f7831c'
-                    };
+                    const modeColors = { '搶星大作戰': '#01cfff', '寶石爭奪戰': '#9b3df3', '金庫攻防戰': '#d65cd3', '亂鬥足球': '#8ca0df', '據點搶奪戰': '#e33c50', '極限淘汰賽': '#f7831c' };
                     
                     TARGET_SIX_MODES.forEach(modeName => {
                         let totalMatches = 0;
@@ -705,7 +750,6 @@ def generate_interactive_main_page(current_acc, current_view):
                             let valid = brawlers.filter(b => b.matches >= 3);
                             let topPR = [...valid].sort((a, b) => b.pr - a.pr).slice(0, 3);
                             let topWR = [...valid].sort((a, b) => b.wr - a.wr || b.matches - a.matches).slice(0, 3);
-                            
                             let trap = [...valid].filter(b => b.wr < 0.45).sort((a, b) => b.matches - a.matches)[0];
                             let gem = [...valid].filter(b => b.wr >= 0.70 && !topPR.some(t => t.name === b.name)).sort((a, b) => b.wr - a.wr || b.matches - a.matches)[0];
                             
@@ -713,14 +757,10 @@ def generate_interactive_main_page(current_acc, current_view):
                                 mHtml += `<div style="color:#777; text-align:center; padding: 30px 0;">(該模式需出場滿 3 次才能計算排行榜)</div>`;
                             } else {
                                 mHtml += `<div style="color:#DDD; font-size:14px; margin: 10px 0 5px 0;">📊 出場率 Top 3</div>`;
-                                topPR.forEach(b => {
-                                    mHtml += `<div class="b-line-bar"><div class="bar-label"><span class="b-name">🦸 ${b.name}</span><span class="b-data">${(b.pr*100).toFixed(1)}% (${b.matches}場)</span></div><div class="bar-track"><div class="bar-fill" style="width: ${b.pr*100}%; background-color: #888888;"></div></div></div>`;
-                                });
+                                topPR.forEach(b => { mHtml += `<div class="b-line-bar"><div class="bar-label"><span class="b-name">🦸 ${b.name}</span><span class="b-data">${(b.pr*100).toFixed(1)}% (${b.matches}場)</span></div><div class="bar-track"><div class="bar-fill" style="width: ${b.pr*100}%; background-color: #888888;"></div></div></div>`; });
                                 
                                 mHtml += `<div style="color:#DDD; font-size:14px; margin: 20px 0 5px 0;">🏆 勝率 Top 3</div>`;
-                                topWR.forEach(b => {
-                                    mHtml += `<div class="b-line-bar"><div class="bar-label"><span class="b-name">🦸 ${b.name}</span><span class="b-data">${(b.wr*100).toFixed(1)}% (${b.w}W-${b.l}L)</span></div><div class="bar-track"><div class="bar-fill win" style="width: ${b.wr*100}%; background-color: ${color};"></div></div></div>`;
-                                });
+                                topWR.forEach(b => { mHtml += `<div class="b-line-bar"><div class="bar-label"><span class="b-name">🦸 ${b.name}</span><span class="b-data">${(b.wr*100).toFixed(1)}% (${b.w}W-${b.l}L)</span></div><div class="bar-track"><div class="bar-fill win" style="width: ${b.wr*100}%; background-color: ${color};"></div></div></div>`; });
                                 
                                 if (trap || gem) {
                                     mHtml += `<div style="margin-top: 25px; padding: 12px; background-color: #1A1F24; border-radius: 6px; border-left: 3px solid #2A323C;">`;
@@ -733,280 +773,19 @@ def generate_interactive_main_page(current_acc, current_view):
                         mHtml += `</div>`;
                         sHtml += mHtml;
                     });
-                    
                     sHtml += `</div></div>`; 
                     container.innerHTML += sHtml;
                 });
             }
 
-            function drawWebPingChart() {
-                const canvas = document.getElementById('pingCanvas');
-                if (!canvas) return;
-                const ctx = canvas.getContext('2d');
-                const w = canvas.width;
-                const h = canvas.height;
-
-                ctx.clearRect(0, 0, w, h);
-
-                const hist = currentPingData.history;
-                if (!hist || !hist.api || hist.api.length === 0) {
-                    ctx.fillStyle = '#AAAAAA';
-                    ctx.font = '14px Consolas';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('📡 資料搜集中，請稍後...', w/2, h/2);
-                    return;
-                }
-
-                let allVals = [...hist.api, ...hist.tokyo, ...hist.hk].filter(v => v < 999);
-                let maxY = allVals.length > 0 ? Math.max(...allVals) : 100;
-                maxY = Math.max(Math.ceil(maxY / 50) * 50, 100);
-
-                ctx.strokeStyle = '#2A323C';
-                ctx.fillStyle = '#777777';
-                ctx.font = '12px Consolas';
-                ctx.textAlign = 'left';
-
-                for (let i = 1; i <= 5; i++) {
-                    let y = h - (h * (i/5));
-                    ctx.beginPath();
-                    ctx.setLineDash([4, 4]);
-                    ctx.moveTo(0, y);
-                    ctx.lineTo(w, y);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                    ctx.fillText(Math.round(maxY * i / 5) + 'ms', 5, y - 5);
-                }
-                
-                ctx.beginPath();
-                ctx.strokeStyle = '#555555';
-                ctx.lineWidth = 2;
-                ctx.moveTo(0, h);
-                ctx.lineTo(w, h);
-                ctx.stroke();
-
-                function drawLine(data, color) {
-                    if (!data || data.length === 0) return;
-                    ctx.strokeStyle = color;
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-
-                    let xStep = w / 60;
-                    let startX = w - (data.length * xStep);
-
-                    data.forEach((val, i) => {
-                        let x = startX + (i * xStep);
-                        let drawVal = val < 999 ? val : maxY * 1.1;
-                        let y = h - (h * (drawVal / maxY));
-                        y = Math.max(0, Math.min(y, h));
-
-                        if (i === 0) ctx.moveTo(x, y);
-                        else ctx.lineTo(x, y);
-                    });
-                    ctx.stroke(); 
-
-                    let lastVal = data[data.length - 1];
-                    let drawVal = lastVal < 999 ? lastVal : maxY * 1.1;
-                    let lastY = h - (h * (drawVal / maxY));
-                    lastY = Math.max(0, Math.min(lastY, h));
-                    let lastX = startX + ((data.length - 1) * xStep);
-
-                    ctx.fillStyle = color;
-                    ctx.beginPath();
-                    ctx.arc(lastX, lastY, 3, 0, 2 * Math.PI);
-                    ctx.fill();
-                }
-
-                drawLine(hist.api, '#00CCFF');
-                drawLine(hist.tokyo, '#DF44FF');
-                drawLine(hist.hk, '#FFD700');
-            }
-
-            function updatePingUI(pingData) {
-                const pingApiEl = document.getElementById('val-ping-api');
-                const pingTokyoEl = document.getElementById('val-ping-tokyo');
-                const pingHkEl = document.getElementById('val-ping-hk');
-                
-                if (pingApiEl) {
-                    let apiColor = pingData.api < 80 ? '#00FFAA' : (pingData.api < 150 ? '#FFAA00' : '#FF5555');
-                    pingApiEl.innerText = pingData.api === 999 ? '異常' : `${pingData.api}ms`;
-                    pingApiEl.style.color = apiColor;
-                }
-                if (pingTokyoEl) {
-                    let tokyoColor = pingData.tokyo < 80 ? '#00FFAA' : (pingData.tokyo < 150 ? '#FFAA00' : '#FF5555');
-                    pingTokyoEl.innerText = pingData.tokyo === 999 ? '異常' : `${pingData.tokyo}ms`;
-                    pingTokyoEl.style.color = tokyoColor;
-                }
-                if (pingHkEl) {
-                    let hkColor = pingData.hk < 80 ? '#00FFAA' : (pingData.hk < 150 ? '#FFAA00' : '#FF5555');
-                    pingHkEl.innerText = pingData.hk === 999 ? '異常' : `${pingData.hk}ms`;
-                    pingHkEl.style.color = hkColor;
-                }
-            }
-
-            function render() {
-                const data = appData[currentAcc];
-                const viewData = data[currentView];
-                const isSession = (currentView === 'session');
-                
-                document.documentElement.style.setProperty('--theme-color', data.color);
-                applyPageState();
-                
-                updatePingUI(currentPingData.current);
-                
-                ['btn-大號', 'btn-小號', 'btn-session', 'btn-all_time', 'btn-disp-data', 'btn-disp-bar'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if(!el) return;
-                    if(id.includes('大號')) { el.classList.toggle('active', currentAcc === '大號'); el.style.color = currentAcc === '大號' ? data.color : '#555555'; }
-                    if(id.includes('小號')) { el.classList.toggle('active', currentAcc === '小號'); el.style.color = currentAcc === '小號' ? data.color : '#555555'; }
-                    if(id.includes('session')) { el.classList.toggle('active', isSession); el.style.color = isSession ? data.color : '#555555'; }
-                    if(id.includes('all_time')) { el.classList.toggle('active', !isSession); el.style.color = !isSession ? data.color : '#555555'; }
-                    if(id.includes('data')) { el.classList.toggle('active', currentDisplayMode === 'data'); el.style.color = currentDisplayMode === 'data' ? data.color : '#555555'; }
-                    if(id.includes('bar')) { el.classList.toggle('active', currentDisplayMode === 'bar'); el.style.color = currentDisplayMode === 'bar' ? data.color : '#555555'; }
-                });
-                
-                const tierStr = data.tier.toUpperCase();
-                let tierColor = data.color; 
-                if (tierStr.includes('BRONZE')) tierColor = '#CD7F32';      
-                else if (tierStr.includes('SILVER')) tierColor = '#B4C5E4'; 
-                else if (tierStr.includes('GOLD')) tierColor = '#FFD700';   
-                else if (tierStr.includes('DIAMOND')) tierColor = '#11C4EB';
-                else if (tierStr.includes('MYTHIC')) tierColor = '#DF44FF'; 
-                else if (tierStr.includes('LEGENDARY')) tierColor = '#FF3333'; 
-                else if (tierStr.includes('MASTER')) tierColor = '#FF8800'; 
-                else if (tierStr.includes('PRO')) tierColor = '#33CC33';    
-
-                const valTrophies = document.getElementById('val-trophies');
-                if(valTrophies) valTrophies.innerHTML = `${data.trophies} <span class="diff">(${data.diff_trophies})</span>`;
-                
-                const val3v3 = document.getElementById('val-3v3');
-                if(val3v3) val3v3.innerText = data.victories_3v3;
-                
-                const valElo = document.getElementById('val-elo');
-                if(valElo) valElo.innerHTML = `${data.elo} <span class="diff">(${data.diff_elo})</span>`;
-                
-                const tierElem = document.getElementById('val-tier');
-                if(tierElem) {
-                    tierElem.innerText = data.tier;
-                    tierElem.style.color = tierColor;
-                    tierElem.style.textShadow = `0 0 15px ${tierColor}90`;
-                }
-                
-                const sumSec = document.getElementById('summary-section');
-                if(sumSec) {
-                    sumSec.innerHTML = `
-                        ${createRowHtml('🏅 排位賽', viewData.summary.ranked, true)}
-                        ${createRowHtml('⏳ 一般模式', viewData.summary.casual, true)}
-                        ${createRowHtml('🎪 特別活動', viewData.summary.special, true)}
-                        ${createRowHtml('📊 總戰績', viewData.summary.total, true, true)}
-                    `;
-                }
-                
-                const grid = document.getElementById('brawler-grid');
-                if(grid) {
-                    grid.innerHTML = '';
-                    viewData.brawlers.forEach(cat => {
-                        let catHtml = `<div class="brawler-cat"><h3>${cat.icon} ${cat.title}</h3>`;
-                        cat.items.forEach(b => {
-                            catHtml += createRowHtml(`🦸 ${b.name}`, b);
-                        });
-                        catHtml += `</div>`;
-                        grid.innerHTML += catHtml;
-                    });
-                }
-
-                const valEloRk = document.getElementById('val-elo-rk');
-                if(valEloRk) valEloRk.innerHTML = `${data.elo} <span class="diff">(${data.diff_elo})</span>`;
-                
-                const valTierRk = document.getElementById('val-tier-rk');
-                if(valTierRk) {
-                    valTierRk.innerText = data.tier;
-                    valTierRk.style.color = tierColor;
-                    valTierRk.style.textShadow = `0 0 15px ${tierColor}90`;
-                }
-                
-                const sumSecRk = document.getElementById('summary-ranked-only');
-                if(sumSecRk) {
-                    const rkLabel = isSession ? '🏅 排位戰績 (本次)' : '🏅 排位總計 (歷史)';
-                    sumSecRk.innerHTML = createRowHtml(rkLabel, viewData.summary.ranked, true);
-                }
-                
-                renderRankedPage(data);
-                
-                const searchModal = document.getElementById('searchModal');
-                if (searchModal && searchModal.style.display === 'flex') {
-                    if (!document.getElementById('pingCanvas')) {
-                        handleSearch(true);
-                    }
-                }
-            }
-
-            function switchAccount(acc) {
-                currentAcc = acc;
-                sessionStorage.setItem('currentAcc', acc);
-                render();
-            }
-            
-            function switchView(view) {
-                currentView = view;
-                sessionStorage.setItem('currentView', view);
-                render();
-            }
-
-            function setDisplayMode(mode) {
-                currentDisplayMode = mode;
-                localStorage.setItem('displayMode', mode);
-                render();
-            }
-            
-            function setAlignment(align) {
-                currentAlign = align;
-                localStorage.setItem('pageAlign', align);
-                document.body.style.justifyContent = align;
-                
-                const btnAlignLeft = document.getElementById('btn-align-left');
-                if(btnAlignLeft) btnAlignLeft.classList.toggle('active', align === 'flex-start');
-                
-                const btnAlignCenter = document.getElementById('btn-align-center');
-                if(btnAlignCenter) btnAlignCenter.classList.toggle('active', align === 'center');
-                
-                const btnAlignRight = document.getElementById('btn-align-right');
-                if(btnAlignRight) btnAlignRight.classList.toggle('active', align === 'flex-end');
-            }
-
-            function handleSearch(isReRender = false) {
+            function handleSearch() {
                 const searchInput = document.getElementById('searchInput');
                 if(!searchInput) return;
                 const query = searchInput.value.trim();
-                if (!query && !isReRender) return;
-                
-                if (query.toLowerCase() === 'ping') {
-                    document.getElementById('modal-title').innerText = "戰術透視鏡 - 網路雷達";
-                    const modalBox = document.getElementById('modal-content-box');
-                    if (modalBox) modalBox.style.maxWidth = "540px";
-                    
-                    let html = `
-                        <div style="text-align:center; padding: 10px;">
-                            <div style="font-size:16px; font-weight:bold; margin-bottom:15px; color:#FFFFFF;">📶 過去 3 分鐘 Ping 值走勢</div>
-                            <canvas id="pingCanvas" width="460" height="250" style="background-color:#1A1F24; border:1px solid #2A323C; border-radius:8px;"></canvas>
-                            <div style="margin-top:15px; display:flex; justify-content:center; gap:20px; font-family:'Consolas', monospace; font-size:14px; font-weight:bold;">
-                                <span style="color:#00CCFF;">■ 官方 API</span>
-                                <span style="color:#DF44FF;">■ 東京節點</span>
-                                <span style="color:#FFD700;">■ 香港節點</span>
-                            </div>
-                        </div>
-                    `;
-                    document.getElementById('modal-body').innerHTML = html;
-                    document.getElementById('searchModal').style.display = 'flex';
-                    document.body.classList.add('no-scroll');
-                    
-                    drawWebPingChart(); 
-                    
-                    if (!isReRender) searchInput.value = '';
-                    return;
-                }
+                if (!query) return;
 
                 const isChinese = /[\\u4e00-\\u9fff]/.test(query);
-                const searchData = appData[currentAcc]['all_time'];
+                const searchData = appData['current_player']['all_time'];
                 let resultHtml = "";
                 let modalTitle = "";
                 const modalBox = document.getElementById('modal-content-box');
@@ -1033,12 +812,11 @@ def generate_interactive_main_page(current_acc, current_view):
                     if (modalBox) modalBox.style.maxWidth = "500px";
                     const bName = Object.keys(searchData.brawler_details).find(k => k.includes(query.toUpperCase()));
                     if (!bName) {
-                        if(!isReRender) alert(`資料庫中找不到包含【${query}】的英雄紀錄。`);
+                        alert(`資料庫中找不到包含【${query}】的英雄紀錄。`);
                         return;
                     }
                     const bStats = searchData.brawler_details[bName];
                     modalTitle = `【 ${bName} 】(歷史總計)`;
-                    
                     let totalRankedMatches = searchData.summary.ranked.w + searchData.summary.ranked.l + searchData.summary.ranked.d;
 
                     resultHtml += `<div class="brawler-cat" style="border-left-color:#FFAA00;"><h3>▶ 總結 <span style="float:right; color:#FFAA00; font-family:Consolas;">${bStats.summary.split('(')[1].replace(')','')}</span></h3>`;
@@ -1052,7 +830,6 @@ def generate_interactive_main_page(current_acc, current_view):
                             let pr = totalRankedMatches > 0 ? ((catMatches / totalRankedMatches) * 100).toFixed(1) : "0.0";
                             prText = ` <span style="font-size:14px; color:#888;">(出場率: ${pr}%)</span>`;
                         }
-                        
                         resultHtml += `<div class="brawler-cat"><h3>${cat.icon} ${cat.title}${prText} <span style="float:right; color:var(--theme-color); font-family:Consolas;">${cat.wr}</span></h3>`;
                         resultHtml += createRowHtml('分類總計', {stats: `${cat.wins}W - ${cat.losses}L`, w: cat.w, l: cat.l, d: cat.d});
                         cat.modes.forEach(m => {
@@ -1062,71 +839,98 @@ def generate_interactive_main_page(current_acc, current_view):
                     });
                 }
                 
-                const mTitle = document.getElementById('modal-title');
-                if(mTitle) mTitle.innerText = modalTitle;
-                
-                const mBody = document.getElementById('modal-body');
-                if(mBody) mBody.innerHTML = resultHtml;
-                
-                const mModal = document.getElementById('searchModal');
-                if(mModal) mModal.style.display = 'flex';
-                
+                document.getElementById('modal-title').innerText = modalTitle;
+                document.getElementById('modal-body').innerHTML = resultHtml;
+                document.getElementById('searchModal').style.display = 'flex';
                 document.body.classList.add('no-scroll');
+                searchInput.value = '';
             }
 
             function closeModal() {
-                const mModal = document.getElementById('searchModal');
-                if(mModal) mModal.style.display = 'none';
-                
-                const rStatus = document.getElementById('refresh-status');
-                if(rStatus) rStatus.innerText = "畫面每 30 秒自動刷新最新戰況";
-                
+                document.getElementById('searchModal').style.display = 'none';
                 document.body.classList.remove('no-scroll');
             }
 
-            setInterval(() => {
-                const mModal = document.getElementById('searchModal');
-                if (mModal && mModal.style.display !== 'flex') {
-                    const script = document.createElement('script');
-                    script.src = 'dashboard_data.js?t=' + new Date().getTime();
-                    script.onload = function() {
-                        try {
-                            if (window.__DYNAMIC_APP_DATA__) {
-                                appData = window.__DYNAMIC_APP_DATA__;
-                                window.appData = appData;
-                                render(); 
-                            }
-                        } catch (e) {}
-                        document.body.removeChild(script); 
-                    };
-                    script.onerror = function() { document.body.removeChild(script); };
-                    document.body.appendChild(script);
-                } else {
-                    const rStatus = document.getElementById('refresh-status');
-                    if(rStatus && !document.getElementById('pingCanvas')) rStatus.innerText = "(為避免干擾閱讀，資料更新已暫停，關閉彈窗後恢復更新)";
-                }
-            }, 30000);
-            
-            setInterval(() => {
-                const isPingModalOpen = document.getElementById('searchModal').style.display === 'flex' && document.getElementById('pingCanvas');
+            function render() {
+                // 如果是空資料(歡迎畫面)，就不用執行渲染
+                if (!appData['current_player'] || appData['current_player'].trophies === 0) return;
+
+                const data = appData['current_player'];
+                const viewData = data[currentView];
+                const isSession = (currentView === 'session');
                 
-                if (activePage !== 'ranked' && !isPingModalOpen) return;
+                document.documentElement.style.setProperty('--theme-color', data.color);
+                applyPageState();
                 
-                const script = document.createElement('script');
-                script.src = 'ping_data.js?t=' + new Date().getTime();
-                script.onload = function() {
-                    try {
-                        if (window.__PING_DATA__) {
-                            currentPingData = window.__PING_DATA__;
-                            updatePingUI(currentPingData.current);
-                            if (isPingModalOpen) drawWebPingChart(); 
-                        }
-                    } catch (e) {}
-                    document.body.removeChild(script); 
-                };
-                script.onerror = function() { document.body.removeChild(script); };
-                document.body.appendChild(script);
-            }, 3000);
+                ['btn-session', 'btn-all_time', 'btn-disp-data', 'btn-disp-bar'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if(!el) return;
+                    if(id.includes('session')) { el.classList.toggle('active', isSession); el.style.color = isSession ? data.color : '#555555'; }
+                    if(id.includes('all_time')) { el.classList.toggle('active', !isSession); el.style.color = !isSession ? data.color : '#555555'; }
+                    if(id.includes('data')) { el.classList.toggle('active', currentDisplayMode === 'data'); el.style.color = currentDisplayMode === 'data' ? data.color : '#555555'; }
+                    if(id.includes('bar')) { el.classList.toggle('active', currentDisplayMode === 'bar'); el.style.color = currentDisplayMode === 'bar' ? data.color : '#555555'; }
+                });
+
+                const tierStr = data.tier.toUpperCase();
+                let tierColor = data.color; 
+                if (tierStr.includes('BRONZE')) tierColor = '#CD7F32';      
+                else if (tierStr.includes('SILVER')) tierColor = '#B4C5E4'; 
+                else if (tierStr.includes('GOLD')) tierColor = '#FFD700';   
+                else if (tierStr.includes('DIAMOND')) tierColor = '#11C4EB';
+                else if (tierStr.includes('MYTHIC')) tierColor = '#DF44FF'; 
+                else if (tierStr.includes('LEGENDARY')) tierColor = '#FF3333'; 
+                else if (tierStr.includes('MASTER')) tierColor = '#FF8800'; 
+                
+                document.getElementById('val-trophies').innerHTML = `${data.trophies} <span class="diff">(${data.diff_trophies})</span>`;
+                document.getElementById('val-3v3').innerText = data.victories_3v3;
+                
+                const eloDiffStr = data.diff_elo || '+0';
+                document.getElementById('val-elo').innerHTML = `${data.elo} <span class="diff">(${eloDiffStr})</span>`;
+                document.getElementById('val-elo-rk').innerHTML = `${data.elo} <span class="diff">(${eloDiffStr})</span>`;
+                
+                const tierElem = document.getElementById('val-tier');
+                tierElem.innerText = data.tier;
+                tierElem.style.color = tierColor;
+                tierElem.style.textShadow = `0 0 15px ${tierColor}90`;
+                
+                const tierElemRk = document.getElementById('val-tier-rk');
+                tierElemRk.innerText = data.tier;
+                tierElemRk.style.color = tierColor;
+                tierElemRk.style.textShadow = `0 0 15px ${tierColor}90`;
+                
+                document.getElementById('summary-section').innerHTML = `
+                    ${createRowHtml('🏅 排位賽', viewData.summary.ranked, true)}
+                    ${createRowHtml('⏳ 一般模式', viewData.summary.casual, true)}
+                    ${createRowHtml('🎪 特別活動', viewData.summary.special, true)}
+                    ${createRowHtml('📊 總戰績', viewData.summary.total, true, true)}
+                `;
+                
+                const rkLabel = isSession ? '🏅 排位戰績 (本次)' : '🏅 排位總計 (歷史)';
+                document.getElementById('summary-ranked-only').innerHTML = createRowHtml(rkLabel, viewData.summary.ranked, true);
+
+                const grid = document.getElementById('brawler-grid');
+                grid.innerHTML = '';
+                viewData.brawlers.forEach(cat => {
+                    let catHtml = `<div class="brawler-cat"><h3>${cat.icon} ${cat.title}</h3>`;
+                    cat.items.forEach(b => {
+                        catHtml += createRowHtml(`🦸 ${b.name}`, b);
+                    });
+                    catHtml += `</div>`;
+                    grid.innerHTML += catHtml;
+                });
+                
+                renderRankedPage(data);
+            }
+
+            function switchView(view) { currentView = view; sessionStorage.setItem('currentView', view); render(); }
+            function setDisplayMode(mode) { currentDisplayMode = mode; localStorage.setItem('displayMode', mode); render(); }
+            function setAlignment(align) {
+                currentAlign = align; localStorage.setItem('pageAlign', align);
+                document.body.style.justifyContent = align;
+                document.getElementById('btn-align-left').classList.toggle('active', align === 'flex-start');
+                document.getElementById('btn-align-center').classList.toggle('active', align === 'center');
+                document.getElementById('btn-align-right').classList.toggle('active', align === 'flex-end');
+            }
 
             render();
             setAlignment(currentAlign);
@@ -1135,417 +939,12 @@ def generate_interactive_main_page(current_acc, current_view):
     </html>
     """
     
-    html_path = os.path.join(base_dir, "Brawl_Tactics_Dashboard.html")
-    try:
-        final_html = html_template.replace('__APP_DATA_HERE__', js_string)
-        final_html = final_html.replace('__PING_DATA_HERE__', js_ping_string)
-        with open(html_path, 'w', encoding='utf-8') as f:
-            f.write(final_html)
-            
-        data_js_path = os.path.join(base_dir, "dashboard_data.js")
-        with open(data_js_path, 'w', encoding='utf-8') as f:
-            f.write(f"window.__DYNAMIC_APP_DATA__ = {js_string};")
-    except: pass
+    # 動態變數注入
+    final_html = html_template.replace('__APP_DATA_HERE__', js_string)
+    final_html = final_html.replace('__CURRENT_TAG__', tag)
+    final_html = final_html.replace('__DASHBOARD_DISPLAY_NAV__', dashboard_display_nav)
+    final_html = final_html.replace('__DASHBOARD_DISPLAY__', dashboard_display)
+    final_html = final_html.replace('__WELCOME_DISPLAY__', welcome_display)
+    final_html = final_html.replace('__REFRESH_TEXT__', refresh_status_text)
 
-def brawlboard_keepalive_worker():
-    while True:
-        for acc_name, acc_info in ACCOUNTS.items():
-            try:
-                clean_tag = acc_info['tag'].replace('#', '')
-                url = f"https://brawlboard.net/dc-account/{clean_tag}"
-                requests.get(url, headers=headers_ninja, timeout=10)
-            except:
-                pass
-        time.sleep(180)
-
-def ping_worker():
-    global network_ping_api, network_ping_tokyo, network_ping_hk
-    while True:
-        try:
-            start = time.time()
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(2)
-            sock.connect(('api.brawlstars.com', 443))
-            sock.close()
-            network_ping_api = int((time.time() - start) * 1000)
-        except: network_ping_api = 999
-            
-        try:
-            start = time.time()
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(2)
-            sock.connect(('ec2.ap-northeast-1.amazonaws.com', 443))
-            sock.close()
-            network_ping_tokyo = int((time.time() - start) * 1000)
-        except: network_ping_tokyo = 999
-            
-        try:
-            start = time.time()
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(2)
-            sock.connect(('ec2.ap-east-1.amazonaws.com', 443))
-            sock.close()
-            network_ping_hk = int((time.time() - start) * 1000)
-        except: network_ping_hk = 999
-            
-        ping_history['api'].append(network_ping_api)
-        ping_history['tokyo'].append(network_ping_tokyo)
-        ping_history['hk'].append(network_ping_hk)
-            
-        ping_js_path = os.path.join(base_dir, "ping_data.js")
-        try:
-            ping_payload = {
-                'current': {'api': network_ping_api, 'tokyo': network_ping_tokyo, 'hk': network_ping_hk},
-                'history': {
-                    'api': list(ping_history['api']),
-                    'tokyo': list(ping_history['tokyo']),
-                    'hk': list(ping_history['hk'])
-                }
-            }
-            with open(ping_js_path, 'w', encoding='utf-8') as f:
-                f.write(f"window.__PING_DATA__ = {json.dumps(ping_payload)};")
-        except: pass
-            
-        time.sleep(3)
-
-def fetch_account_data(acc_name):
-    global account_stats, current_display_account, current_view_mode, last_sync_time_str, last_new_data_real_time
-    
-    # 🚀 錯開請求：改為讓大號晚 2 秒出發，小號先拿資料
-    if acc_name == '大號':
-        time.sleep(2)
-        
-    tag = ACCOUNTS[acc_name]['tag']
-    excel_file = ACCOUNTS[acc_name]['excel']
-    encoded_tag = urllib.parse.quote(tag)
-    p_url = f'https://api.brawlstars.com/v1/players/{encoded_tag}'
-    b_url = f'https://api.brawlstars.com/v1/players/{encoded_tag}/battlelog'
-    
-    while True:
-        try:
-            stats = account_stats[acc_name]
-            res_profile = requests.get(p_url, headers=headers_official, timeout=10)
-            res_battlelog = requests.get(b_url, headers=headers_official, timeout=10)
-            
-            if res_profile.status_code == 200 and res_battlelog.status_code == 200:
-                last_sync_time_str = (datetime.utcnow() + timedelta(hours=8)).strftime('%H:%M:%S')
-                data = res_profile.json()
-                stats['owned_brawlers'] = [b.get('name', '').upper() for b in data.get('brawlers', [])]
-                current_trophies = data.get('trophies', 0)
-                if stats['start_trophies'] is None: stats['start_trophies'] = current_trophies
-                trophy_diff = current_trophies - stats['start_trophies']
-                stats['current_trophies'] = current_trophies
-                stats['diff_str'] = f"+{trophy_diff}" if trophy_diff >= 0 else str(trophy_diff)
-                stats['3v3_victories'] = data.get('3vs3Victories', 0)
-                current_elo_val = data.get('rankedElo', 0)
-                
-                current_season_id = data.get('rankedSeasonId', 48)
-                
-                if current_elo_val > 0:
-                    if stats['start_elo'] is None: stats['start_elo'] = current_elo_val
-                    elo_diff = current_elo_val - stats['start_elo']
-                    stats['elo_str'] = str(current_elo_val)
-                    stats['elo_diff_str'] = f"+{elo_diff}" if elo_diff >= 0 else str(elo_diff)
-                    stats['elo_tier'] = data.get('rankedRankName', 'UNKNOWN')
-
-                excel_needs_update = False
-                data_battle = res_battlelog.json()
-                battles = data_battle.get('items', [])
-                if battles:
-                    latest_battle = battles[0]
-                    current_battle_time = latest_battle.get('battleTime')
-                    if stats['last_raw_time'] != current_battle_time:
-                        stats['last_raw_time'] = current_battle_time
-                        time_daho = account_stats['大號']['last_raw_time']
-                        time_xiaho = account_stats['小號']['last_raw_time']
-                        if time_daho and time_xiaho: current_display_account = '大號' if time_daho > time_xiaho else '小號'
-                        elif time_daho: current_display_account = '大號'
-                        elif time_xiaho: current_display_account = '小號'
-                    if stats['last_time'] is None or current_battle_time != stats['last_time']:
-                        excel_needs_update = True 
-                        stats['last_time'] = current_battle_time
-
-                    if excel_needs_update:
-                        last_new_data_real_time = time.time()
-                        
-                        new_records = []
-                        current_owned = stats.get('owned_brawlers', [])
-                        for item in battles:
-                            battle = item.get('battle', {})
-                            event = item.get('event', {})
-                            raw_time = item.get('battleTime', '')
-                            formatted_time = raw_time
-                            if len(raw_time) >= 15:
-                                try:
-                                    dt = datetime.strptime(raw_time[:15], '%Y%m%dT%H%M%S')
-                                    dt_local = dt + timedelta(hours=8)
-                                    formatted_time = dt_local.strftime('%Y-%m-%d %H:%M:%S') 
-                                except: pass
-                            raw_mode = event.get('mode') or battle.get('mode', '')
-                            map_name = event.get('map', '')
-                            raw_type = battle.get('type', '') 
-                            raw_result = battle.get('result', '')
-                            t_change = battle.get('trophyChange')
-                            tc_excel = '無機制' if t_change is None else t_change
-                            my_brawler = '未知'
-                            my_brawler_trophies = None
-                            my_team_brawlers = []
-                            enemy_brawlers = []
-                            teams = battle.get('teams', [])
-                            players = battle.get('players', [])
-                            if teams:
-                                for team in teams:
-                                    is_my_team = any(p.get('tag') == tag for p in team)
-                                    brawler_names = [p.get('brawler', {}).get('name', '') for p in team]
-                                    if is_my_team:
-                                        my_team_brawlers = brawler_names
-                                        for p in team:
-                                            if p.get('tag') == tag:
-                                                my_brawler = p.get('brawler', {}).get('name', '未知')
-                                                my_brawler_trophies = p.get('brawler', {}).get('trophies')
-                                    else: enemy_brawlers.extend(brawler_names)
-                            elif players:
-                                for p in players:
-                                    b_name = p.get('brawler', {}).get('name', '')
-                                    if p.get('tag') == tag:
-                                        my_brawler = b_name
-                                        my_brawler_trophies = p.get('brawler', {}).get('trophies')
-                                        my_team_brawlers = [b_name]
-                                    else: enemy_brawlers.append(b_name)
-                            star_player = battle.get('starPlayer') or {}
-                            is_mvp = bool(star_player.get('tag') == tag)
-                            
-                            rank_mech = '一般'
-                            rank_season = ''
-                            if raw_type in ['soloRanked', 'teamRanked']:
-                                rank_season = str(current_season_id)
-                                try:
-                                    dt_val = datetime.strptime(formatted_time, '%Y-%m-%d %H:%M:%S')
-                                    is_old_record = dt_val <= datetime(2026, 8, 19, 23, 59, 59)
-                                except:
-                                    is_old_record = False
-                                    
-                                if is_old_record:
-                                    rank_mech = 'BO3'
-                                    rank_season = '47'
-                                elif my_brawler_trophies is None or str(my_brawler_trophies).strip() == '':
-                                    rank_mech = 'BO3'
-                                else:
-                                    try:
-                                        if int(my_brawler_trophies) >= 13: rank_mech = 'BO3'
-                                        else: rank_mech = 'BO1'
-                                    except: rank_mech = 'BO3'
-
-                            new_records.append({
-                                '對戰時間': formatted_time, '模式': raw_mode, '地圖': map_name, '類型': raw_type,  
-                                '我方英雄': my_brawler, '英雄盃數': my_brawler_trophies, '戰果': raw_result,
-                                '獎盃變化': tc_excel, '是否MVP': is_mvp, '我方陣容': ', '.join(my_team_brawlers),
-                                '敵方陣容': ', '.join(enemy_brawlers), '排位機制': rank_mech, '賽季': rank_season
-                            })
-
-                        df_new = pd.DataFrame(new_records)
-                        
-                        read_success = True
-                        df_old = pd.DataFrame()
-                        if os.path.exists(excel_file):
-                            try:
-                                xls = pd.ExcelFile(excel_file)
-                                sheet_to_read = '戰績明細' if '戰績明細' in xls.sheet_names else xls.sheet_names[0]
-                                df_old = pd.read_excel(xls, sheet_name=sheet_to_read)
-                                if not df_old.empty and '對戰時間' in df_old.columns:
-                                    df_old['對戰時間'] = df_old['對戰時間'].astype(str)
-                            except Exception as e:
-                                read_success = False
-                                print(f"讀取 Excel 失敗，啟動防護機制暫停寫入: {e}")
-                                
-                        if not read_success:
-                            time.sleep(30)
-                            continue
-
-                        if not df_old.empty:
-                            df_old['我方英雄'] = df_old['我方英雄'].fillna('未知')
-                            if '是否寶箱活動' not in df_old.columns: df_old['是否寶箱活動'] = False
-                            else: df_old['是否寶箱活動'] = df_old['是否寶箱活動'].fillna(False).astype(bool)
-                            
-                            if '賽季' not in df_old.columns: df_old['賽季'] = ''
-                            
-                            def correct_rank_mech(r):
-                                if r.get('類型') in ['soloRanked', 'teamRanked']:
-                                    dt_str = str(r.get('對戰時間', ''))
-                                    try:
-                                        if datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S') <= datetime(2026, 8, 19, 23, 59, 59):
-                                            return 'BO3'
-                                    except: pass
-                                    
-                                    val = r.get('英雄盃數')
-                                    if pd.isna(val) or str(val).strip() == '':
-                                        return 'BO3'
-                                    try: 
-                                        return 'BO3' if int(val) >= 13 else 'BO1'
-                                    except: 
-                                        return 'BO3'
-                                return '一般'
-                            
-                            def determine_season(r):
-                                if r.get('類型') not in ['soloRanked', 'teamRanked']: return ''
-                                val = r.get('賽季')
-                                if pd.notna(val) and str(val).strip() != '': return str(val)
-                                dt_str = str(r.get('對戰時間', ''))
-                                try:
-                                    if datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S') <= datetime(2026, 8, 19, 23, 59, 59): 
-                                        return '47'
-                                    return str(current_season_id)
-                                except: return '48'
-
-                            df_old['排位機制'] = df_old.apply(correct_rank_mech, axis=1)
-                            df_old['賽季'] = df_old.apply(determine_season, axis=1)
-
-                        if not df_new.empty:
-                            df_new['對戰時間'] = df_new['對戰時間'].astype(str)
-                            df_new['是否寶箱活動'] = False
-                            if current_owned:
-                                def mark_new_boxes(r):
-                                    try:
-                                        t1 = str(r.get('我方陣容', ''))
-                                        t2 = str(r.get('敵方陣容', ''))
-                                        b_list = [x.strip() for x in (t1 + ',' + t2).split(',') if x.strip() and x.strip() != 'nan']
-                                        if len(b_list) > 1 and len(set(b_list)) == 1: return False
-                                        rtype = str(r.get('類型', ''))
-                                        hero = str(r.get('我方英雄', '')).upper()
-                                        if rtype == 'ranked' and hero not in current_owned and hero not in ['未知', 'NAN', 'NONE', '']: return True
-                                        return False
-                                    except: return False
-                                df_new['是否寶箱活動'] = df_new.apply(mark_new_boxes, axis=1)
-
-                        if not df_old.empty and not df_new.empty: 
-                            df_combined = pd.concat([df_new, df_old], ignore_index=True).drop_duplicates(subset=['對戰時間'], keep='first')
-                        elif not df_new.empty: df_combined = df_new
-                        else: df_combined = df_old
-
-                        if '是否寶箱活動' in df_combined.columns: df_combined['是否寶箱活動'] = df_combined['是否寶箱活動'].fillna(False).astype(bool)
-                        df_combined = df_combined.sort_values(by='對戰時間', ascending=False)
-                        
-                        df_all_time_grouped = process_and_group_dataframe(df_combined)
-                        stats['ui_all_time'] = build_ui_dict(df_all_time_grouped)
-                        stats['ranked_seasons_all_time'] = build_ranked_ui_dict(df_all_time_grouped)
-                        
-                        df_session = df_combined[df_combined['對戰時間'] > stats['startup_formatted_time']].copy()
-                        df_session_grouped = process_and_group_dataframe(df_session)
-                        stats['ui_session'] = build_ui_dict(df_session_grouped)
-                        stats['ranked_seasons_session'] = build_ranked_ui_dict(df_session_grouped)
-
-                        summary_list = []
-                        if not df_all_time_grouped.empty:
-                            for brawler, group in df_all_time_grouped.groupby('我方英雄'):
-                                total_matches = len(group)
-                                wins = len(group[group['戰果'] == 'victory'])
-                                losses = len(group[group['戰果'] == 'defeat'])
-                                draws = len(group[group['戰果'] == 'draw'])
-                                win_rate = wins / total_matches if total_matches > 0 else 0
-                                summary_list.append({'英雄名稱': brawler, '總場數': total_matches, '勝場': wins, '敗場': losses, '平局': draws, '勝率': f"{win_rate:.2%}"})
-                        df_summary = pd.DataFrame(summary_list)
-                        if not df_summary.empty:
-                            df_summary = df_summary.sort_values(by=['英雄名稱'], ascending=True)
-                            total_matches_all = len(df_all_time_grouped)
-                            total_wins_all = len(df_all_time_grouped[df_all_time_grouped['戰果'] == 'victory'])
-                            total_losses_all = len(df_all_time_grouped[df_all_time_grouped['戰果'] == 'defeat'])
-                            total_draws_all = len(df_all_time_grouped[df_all_time_grouped['戰果'] == 'draw'])
-                            total_win_rate = total_wins_all / total_matches_all if total_matches_all > 0 else 0
-                            total_row = pd.DataFrame([{'英雄名稱': '總計 (TOTAL)', '總場數': total_matches_all, '勝場': total_wins_all, '敗場': total_losses_all, '平局': total_draws_all, '勝率': f"{total_win_rate:.2%}"}])
-                            df_summary = pd.concat([df_summary, total_row], ignore_index=True)
-
-                        mode_summary_list = []
-                        if not df_all_time_grouped.empty:
-                            for (brawler, raw_t, raw_m), group in df_all_time_grouped.groupby(['我方英雄', 'UI動態分類', '模式中文']):
-                                m_total = len(group)
-                                m_wins = len(group[group['戰果'] == 'victory'])
-                                m_losses = len(group[group['戰果'] == 'defeat'])
-                                m_draws = len(group[group['戰果'] == 'draw'])
-                                m_win_rate = m_wins / m_total if m_total > 0 else 0
-                                mode_summary_list.append({'英雄名稱': brawler, '賽事類型': raw_t, '對戰模式': raw_m, '該模式場數': m_total, '勝場': m_wins, '敗場': m_losses, '平局': m_draws, '該模式勝率': f"{m_win_rate:.2%}"})
-                        df_mode_summary = pd.DataFrame(mode_summary_list)
-                        if not df_mode_summary.empty:
-                            type_order = {'排位賽': 1, '一般模式': 2, '挑戰': 3, '寶箱活動': 4, '特別活動': 5, '鏡像亂鬥': 6}
-                            df_mode_summary['排序權重'] = df_mode_summary['賽事類型'].map(type_order).fillna(99)
-                            df_mode_summary = df_mode_summary.sort_values(by=['英雄名稱', '排序權重', '該模式場數'], ascending=[True, True, False])
-                            df_mode_summary = df_mode_summary.drop(columns=['排序權重'])
-
-                        # 🚀 即刻更新 Web UI 資料檔案
-                        generate_interactive_main_page(current_display_account, current_view_mode)
-
-                        if not df_combined.empty and not df_summary.empty:
-                            try:
-                                backup_file = excel_file.replace('.xlsx', f'_backup_{datetime.now().strftime("%Y%m%d")}.xlsx')
-                                if os.path.exists(excel_file) and not os.path.exists(backup_file):
-                                    shutil.copy2(excel_file, backup_file)
-                                
-                                temp_excel_file = excel_file.replace('.xlsx', '_tmp.xlsx')
-                                
-                                with pd.ExcelWriter(temp_excel_file, engine='openpyxl') as writer:
-                                    df_combined.to_excel(writer, index=False, sheet_name='戰績明細')
-                                    df_summary.to_excel(writer, index=False, sheet_name='英雄總勝率')
-                                    df_mode_summary.to_excel(writer, index=False, sheet_name='模式詳細勝率') 
-                                    
-                                    center_alignment = Alignment(horizontal='center', vertical='center')
-                                    for sheet_name in writer.sheets:
-                                        worksheet = writer.sheets[sheet_name]
-                                        worksheet.auto_filter.ref = worksheet.dimensions
-                                        for i in range(1, 28): worksheet.column_dimensions[get_column_letter(i)].width = 22
-                                        if sheet_name in ['英雄總勝率', '模式詳細勝率']:
-                                            for row in worksheet.iter_rows():
-                                                for cell in row: cell.alignment = center_alignment
-                                
-                                os.replace(temp_excel_file, excel_file)
-                                
-                            except PermissionError:
-                                if os.path.exists(temp_excel_file):
-                                    try: os.remove(temp_excel_file)
-                                    except: pass
-                            except Exception as e:
-                                print(f"存檔發生嚴重錯誤: {e}")
-                                
-            # 🚀 再次更新 Web UI 資料檔案
-            generate_interactive_main_page(current_display_account, current_view_mode)
-        except: pass
-        
-        time.sleep(15)
-
-# --- FastAPI Web 伺服器設定 ---
-app = FastAPI()
-
-@app.get("/")
-def serve_html():
-    html_path = os.path.join(base_dir, "Brawl_Tactics_Dashboard.html")
-    if os.path.exists(html_path):
-        return FileResponse(html_path)
-    return HTMLResponse("<h1>系統初始化中，請稍後幾秒並重新整理頁面...</h1>", status_code=200)
-
-@app.get("/dashboard_data.js")
-def serve_dash_js():
-    js_path = os.path.join(base_dir, "dashboard_data.js")
-    if os.path.exists(js_path):
-        return FileResponse(js_path)
-    return HTMLResponse("window.__DYNAMIC_APP_DATA__ = {};", media_type="application/javascript")
-
-@app.get("/ping_data.js")
-def serve_ping_js():
-    js_path = os.path.join(base_dir, "ping_data.js")
-    if os.path.exists(js_path):
-        return FileResponse(js_path)
-    return HTMLResponse("window.__PING_DATA__ = {};", media_type="application/javascript")
-
-# --- 主程式啟動 ---
-if __name__ == "__main__":
-    # 在背景啟動所有爬蟲引擎 (小號優先)
-    threading.Thread(target=fetch_account_data, args=('小號',), daemon=True).start()
-    threading.Thread(target=fetch_account_data, args=('大號',), daemon=True).start()
-    threading.Thread(target=ping_worker, daemon=True).start()
-    threading.Thread(target=brawlboard_keepalive_worker, daemon=True).start()
-    
-    print("\n" + "="*50)
-    print("🚀 戰術主控台 Web 伺服器已成功啟動！")
-    print("👉 請打開你的瀏覽器，輸入網址： http://localhost:8000")
-    print("="*50 + "\n")
-    
-    # 啟動 FastAPI
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="error")
+    return HTMLResponse(content=final_html)
