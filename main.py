@@ -349,9 +349,10 @@ def pro_dashboard(tag: str = ""):
     if tag and not tag.startswith("#"):
         tag = "#" + tag
 
+    # UI 顯示狀態切換
     dashboard_display_nav = "flex" if tag else "none"
     dashboard_display = "block" if tag else "none"
-    dashboard_display_search = "flex" if tag else "none"  # 確保搜尋框保持 flex 屬性
+    dashboard_display_search = "flex" if tag else "none"
     welcome_display = "block" if not tag else "none"
     refresh_status_text = "等待玩家輸入標籤"
     
@@ -467,7 +468,7 @@ def pro_dashboard(tag: str = ""):
             .search-box button { background-color: #1A1F24; border: 1px solid #2A323C; color: #FFFFFF; padding: 8px 15px; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-family: 'Consolas', monospace; font-weight: bold; }
             .search-box button:hover { background-color: var(--theme-color); color: #121212; }
 
-            /* ✨ 絕對不換行的究極版置頂列 */
+            /* ✨ 完美對稱：不換行，左右平分空間 */
             .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--theme-color); padding-bottom: 20px; margin-bottom: 30px; transition: border-color 0.3s; flex-wrap: nowrap; overflow: hidden; }
             
             .top-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
@@ -558,17 +559,20 @@ def pro_dashboard(tag: str = ""):
                 </div>
             </div>
 
-            <!-- ✨ 完美對稱排版：強制不換行，左右平分 -->
             <div class="header" style="flex-wrap: nowrap;">
-                <form action="/" method="GET" style="display:flex; align-items:center; gap: 10px; margin:0;">
-                    <span style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3);">請輸入玩家標籤：</span>
-                    <input type="text" name="tag" value="__CURRENT_TAG__" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
-                    <button type="submit" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 20px; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s; white-space:nowrap;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
-                </form>
+                <div style="flex: 1; display: flex; justify-content: flex-start; align-items: center;">
+                    <form action="/" method="GET" style="display:flex; align-items:center; gap: 10px; margin:0;">
+                        <span style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3);">請輸入玩家標籤：</span>
+                        <input type="text" name="tag" value="__CURRENT_TAG__" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
+                        <button type="submit" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 20px; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s; white-space:nowrap;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
+                    </form>
+                </div>
                 
-                <div class="search-box" style="margin-bottom: 0; display: __DASHBOARD_DISPLAY_SEARCH__;">
-                    <input type="text" id="searchInput" placeholder="🔍 搜尋英雄、地圖" onkeypress="if(event.key === 'Enter') handleSearch()" style="width: 180px; padding: 8px 12px;">
-                    <button onclick="handleSearch()" style="padding: 8px 20px; white-space:nowrap;">查詢</button>
+                <div style="flex: 1; display: __DASHBOARD_DISPLAY_SEARCH__; justify-content: flex-end; align-items: center;">
+                    <div class="search-box" style="margin-bottom: 0;">
+                        <input type="text" id="searchInput" placeholder="🔍 搜尋英雄、地圖" onkeypress="if(event.key === 'Enter') handleSearch()" style="width: 180px; padding: 8px 12px;">
+                        <button onclick="handleSearch()" style="padding: 8px 20px; white-space:nowrap;">查詢</button>
+                    </div>
                 </div>
             </div>
 
