@@ -349,7 +349,7 @@ def pro_dashboard(tag: str = ""):
     if tag and not tag.startswith("#"):
         tag = "#" + tag
 
-    # UI 顯示狀態切換 (無標籤時顯示歡迎頁，有標籤才顯示資料)
+    # UI 顯示狀態切換
     dashboard_display_nav = "flex" if tag else "none"
     dashboard_display = "block" if tag else "none"
     welcome_display = "block" if not tag else "none"
@@ -368,11 +368,8 @@ def pro_dashboard(tag: str = ""):
 
     if tag:
         refresh_status_text = "資料庫同步完成"
-        
-        # 自動抓取並儲存到 Supabase
         fetch_and_save_data(tag)
 
-        # 呼叫 API 獲取最新的個人公開資訊
         tag_formatted = tag.replace("#", "%23")
         url = f"https://bsproxy.royaleapi.dev/v1/players/{tag_formatted}"
         headers = {"Authorization": f"Bearer {BRAWL_API_TOKEN}"}
@@ -390,7 +387,6 @@ def pro_dashboard(tag: str = ""):
         except Exception:
             pass
             
-        # 從 Supabase 撈取該標籤的歷史戰績
         res = supabase.table("battlelog").select("*").eq("account", tag).order("battle_time", desc=True).execute()
         df = pd.DataFrame(res.data)
         
@@ -452,7 +448,9 @@ def pro_dashboard(tag: str = ""):
         <meta charset="UTF-8">
         <title>Brawl Tactics Dashboard</title>
         <style>
-            /* 加入 overflow-y: scroll 解決畫面橫跳問題 */
+            /* 1. 預設主題色，讓歡迎畫面的按鈕也能發亮 */
+            :root { --theme-color: #00FFAA; }
+            
             body { background-color: #121212; color: #FFFFFF; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px 8vw; margin: 0; display: flex; justify-content: center; overflow-y: scroll; }
             body.no-scroll { overflow: hidden; }
 
@@ -470,7 +468,8 @@ def pro_dashboard(tag: str = ""):
             .search-box button { background-color: #1A1F24; border: 1px solid #2A323C; color: #FFFFFF; padding: 8px 15px; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-family: 'Consolas', monospace; font-weight: bold; }
             .search-box button:hover { background-color: var(--theme-color); color: #121212; }
 
-            .header { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; border-bottom: 3px solid var(--theme-color); padding-bottom: 20px; margin-bottom: 30px; transition: border-color 0.3s; }
+            /* 2. 標題與搜尋列水平排列修正 */
+            .header { display: flex; justify-content: space-between; align-items: center; gap: 20px; border-bottom: 3px solid var(--theme-color); padding-bottom: 20px; margin-bottom: 30px; transition: border-color 0.3s; flex-wrap: wrap; }
             
             .top-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
             .stat-box { background-color: #121212; border-radius: 12px; padding: 20px; text-align: center; border-left: 4px solid var(--theme-color); transition: border-color 0.3s; }
@@ -540,7 +539,6 @@ def pro_dashboard(tag: str = ""):
             
             <div class="nav-bar" style="display: __DASHBOARD_DISPLAY_NAV__;">
                 <div class="nav-group">
-                    <!-- 固定寬度防止排版推擠 -->
                     <button id="btn-page-toggle" class="nav-btn active" style="color: var(--theme-color); width: 170px; text-align: center;" onclick="togglePage()">▶ 切換至排位賽</button>
                 </div>
                 
@@ -852,7 +850,6 @@ def pro_dashboard(tag: str = ""):
             }
 
             function render() {
-                // 如果是空資料(歡迎畫面)，就不用執行渲染
                 if (!appData['current_player'] || appData['current_player'].trophies === 0) return;
 
                 const data = appData['current_player'];
@@ -939,7 +936,6 @@ def pro_dashboard(tag: str = ""):
     </html>
     """
     
-    # 動態變數注入
     final_html = html_template.replace('__APP_DATA_HERE__', js_string)
     final_html = final_html.replace('__CURRENT_TAG__', tag)
     final_html = final_html.replace('__DASHBOARD_DISPLAY_NAV__', dashboard_display_nav)
