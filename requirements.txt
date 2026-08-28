@@ -1,5 +1,5 @@
-requests
-pandas
-openpyxl
 fastapi
 uvicorn
+supabase
+pandas
+requests
