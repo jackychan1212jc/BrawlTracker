@@ -30,7 +30,6 @@ MODE_TRANSLATION = {
 PVE_MODES = ['lastStand', 'bossFight', 'roboRumble', 'bigGame', 'megaBoss']
 TARGET_SIX_MODES = ['搶星大作戰', '寶石爭奪戰', '金庫攻防戰', '亂鬥足球', '據點搶奪戰', '極限淘汰賽']
 
-# 伺服器啟動時間，用來當作「本次區間」的切分點
 startup_time_local = datetime.utcnow() + timedelta(hours=8)
 current_local_time_str = startup_time_local.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -467,8 +466,8 @@ def pro_dashboard(tag: str = ""):
             .search-box button { background-color: #1A1F24; border: 1px solid #2A323C; color: #FFFFFF; padding: 8px 15px; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-family: 'Consolas', monospace; font-weight: bold; }
             .search-box button:hover { background-color: var(--theme-color); color: #121212; }
 
-            /* ✨ 修正：使用 space-between 讓表單和搜尋框分別靠左、靠右對齊 */
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--theme-color); padding-bottom: 20px; margin-bottom: 30px; transition: border-color 0.3s; flex-wrap: wrap; gap: 15px; }
+            /* ✨ 修正：取消換行設定，強制左右分佈在同一行 */
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--theme-color); padding-bottom: 20px; margin-bottom: 30px; transition: border-color 0.3s; }
             
             .top-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
             .stat-box { background-color: #121212; border-radius: 12px; padding: 20px; text-align: center; border-left: 4px solid var(--theme-color); transition: border-color 0.3s; }
@@ -558,16 +557,17 @@ def pro_dashboard(tag: str = ""):
                 </div>
             </div>
 
+            <!-- ✨ 縮減輸入框寬度，確保所有元素都能完美在同一行 -->
             <div class="header">
-                <form action="/" method="GET" style="display:flex; align-items:center; gap: 10px; margin:0; flex-wrap:wrap;">
-                    <span style="color:var(--theme-color); font-size:24px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3);">請輸入玩家標籤：</span>
-                    <input type="text" name="tag" value="__CURRENT_TAG__" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 15px; border-radius:8px; font-family:'Consolas', monospace; font-size:20px; outline:none; text-transform:uppercase; width:200px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
-                    <button type="submit" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:18px; padding:8px 25px; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
+                <form action="/" method="GET" style="display:flex; align-items:center; gap: 10px; margin:0;">
+                    <span style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3);">玩家標籤：</span>
+                    <input type="text" name="tag" value="__CURRENT_TAG__" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:160px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
+                    <button type="submit" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 20px; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
                 </form>
                 
                 <div class="search-box" style="margin-bottom: 0; display: __DASHBOARD_DISPLAY__;">
-                    <input type="text" id="searchInput" placeholder="🔍 搜尋英雄、地圖" onkeypress="if(event.key === 'Enter') handleSearch()" style="width: 280px;">
-                    <button onclick="handleSearch()">查詢</button>
+                    <input type="text" id="searchInput" placeholder="🔍 搜尋英雄、地圖" onkeypress="if(event.key === 'Enter') handleSearch()" style="width: 200px; padding: 8px 12px;">
+                    <button onclick="handleSearch()" style="padding: 8px 20px;">查詢</button>
                 </div>
             </div>
 
