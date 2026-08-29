@@ -3,8 +3,8 @@ import json
 import requests
 import pandas as pd
 from datetime import datetime, timedelta
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Query
+from fastapi.responses import HTMLResponse, JSONResponse
 from supabase import create_client, Client
 
 app = FastAPI()
@@ -29,10 +29,6 @@ MODE_TRANSLATION = {
 
 PVE_MODES = ['lastStand', 'bossFight', 'roboRumble', 'bigGame', 'megaBoss']
 TARGET_SIX_MODES = ['搶星大作戰', '寶石爭奪戰', '金庫攻防戰', '亂鬥足球', '據點搶奪戰', '極限淘汰賽']
-
-# 🔥 修復 Bug：記錄伺服器啟動時的標準 UTC 時間，確保與官方 API 的時區一致
-startup_time_utc = datetime.utcnow()
-server_start_utc_str = startup_time_utc.strftime('%Y%m%dT%H%M%S.000Z')
 
 def get_wr(w, l, d=0):
     total = w + l + d
@@ -340,100 +336,98 @@ def build_js_view_data(ui_data):
     return {'summary': summary, 'brawlers': brawlers, 'brawler_details': brawler_details, 'map_stats': js_map_stats}
 
 
-@app.get("/")
-def pro_dashboard(tag: str = ""):
-    if not supabase:
-        return HTMLResponse("<h1>資料庫連線失敗，請檢查環境變數。</h1>")
+# 🔥 新增：核心資料打包引擎，供前端與 API 共用
+def get_player_app_data(tag: str, session: str):
+    empty_view = {'summary': {'ranked': {'txt': "0W - 0L (0.0%)", 'w': 0, 'l': 0, 'd': 0}, 'casual': {'txt': "0W - 0L (0.0%)", 'w': 0, 'l': 0, 'd': 0}, 'special': {'txt': "0W - 0L (0.0%)", 'w': 0, 'l': 0, 'd': 0}, 'total': {'txt': "0W - 0L (0.0%)", 'w': 0, 'l': 0, 'd': 0}}, 'brawlers': [], 'brawler_details': {}, 'map_stats': []}
+    
+    if not tag:
+        return {
+            "current_player": {
+                'name': '', 'color': "#00FFAA", 'trophies': 0, 'diff_trophies': '+0', 
+                'victories_3v3': 0, 'elo': '0', 'diff_elo': '+0', 'tier': 'UNKNOWN',
+                'session': empty_view, 'all_time': empty_view,
+                'ranked_seasons_session': {}, 'ranked_seasons_all_time': {}
+            }
+        }
 
     tag = tag.strip().upper()
-    if tag and not tag.startswith("#"):
-        tag = "#" + tag
+    if not tag.startswith("#"): tag = "#" + tag
 
-    # UI 顯示狀態切換
-    dashboard_display_nav = "grid" if tag else "none"
-    dashboard_display = "block" if tag else "none"
-    dashboard_display_search = "flex" if tag else "none"
-    welcome_display = "block" if not tag else "none"
-    refresh_status_text = "等待玩家輸入標籤"
-    
-    empty_view = {'summary': {'ranked': {'txt': "0W - 0L (0.0%)", 'w': 0, 'l': 0, 'd': 0}, 'casual': {'txt': "0W - 0L (0.0%)", 'w': 0, 'l': 0, 'd': 0}, 'special': {'txt': "0W - 0L (0.0%)", 'w': 0, 'l': 0, 'd': 0}, 'total': {'txt': "0W - 0L (0.0%)", 'w': 0, 'l': 0, 'd': 0}}, 'brawlers': [], 'brawler_details': {}, 'map_stats': []}
+    fetch_and_save_data(tag)
+
+    tag_formatted = tag.replace("#", "%23")
+    url = f"https://bsproxy.royaleapi.dev/v1/players/{tag_formatted}"
+    headers = {"Authorization": f"Bearer {BRAWL_API_TOKEN}"}
     
     current_trophies = 0
     victories_3v3 = 0
     elo_val = 0
     tier = "UNKNOWN"
     player_name = ""
+    current_season_id = 48
+    
+    try:
+        res = requests.get(url, headers=headers)
+        if res.status_code == 200:
+            data = res.json()
+            player_name = data.get("name", "")
+            current_trophies = data.get("trophies", 0)
+            victories_3v3 = data.get("3vs3Victories", 0)
+            elo_val = data.get("rankedElo", 0)
+            tier = data.get("rankedRankName", "UNKNOWN")
+            current_season_id = data.get('rankedSeasonId', 48)
+    except Exception:
+        pass
+
+    if supabase:
+        res = supabase.table("battlelog").select("*").eq("account", tag).order("battle_time", desc=True).execute()
+        df = pd.DataFrame(res.data)
+    else:
+        df = pd.DataFrame()
+        
     ui_all_time = empty_view
     ui_session = empty_view
     ranked_seasons_all_time = {}
     ranked_seasons_session = {}
 
-    if tag:
-        refresh_status_text = "資料庫同步完成"
-        fetch_and_save_data(tag)
-
-        tag_formatted = tag.replace("#", "%23")
-        url = f"https://bsproxy.royaleapi.dev/v1/players/{tag_formatted}"
-        headers = {"Authorization": f"Bearer {BRAWL_API_TOKEN}"}
+    if not df.empty:
+        df = df.rename(columns={
+            'battle_time': '對戰時間', 'mode': '模式', 'map': '地圖', 'type': '類型',
+            'my_brawler': '我方英雄', 'result': '戰果', 'brawler_trophies': '英雄盃數'
+        })
         
-        current_season_id = 48
-        try:
-            res = requests.get(url, headers=headers)
-            if res.status_code == 200:
-                data = res.json()
-                player_name = data.get("name", "")
-                current_trophies = data.get("trophies", 0)
-                victories_3v3 = data.get("3vs3Victories", 0)
-                elo_val = data.get("rankedElo", 0)
-                tier = data.get("rankedRankName", "UNKNOWN")
-                current_season_id = data.get('rankedSeasonId', 48)
-        except Exception:
-            pass
-            
-        res = supabase.table("battlelog").select("*").eq("account", tag).order("battle_time", desc=True).execute()
-        df = pd.DataFrame(res.data)
+        def check_bo3(row):
+            if row.get('類型') in ['soloRanked', 'teamRanked']:
+                try: return 'BO3' if int(row.get('英雄盃數', 0)) >= 13 else 'BO1'
+                except: return 'BO3'
+            return '一般'
         
-        if not df.empty:
-            df = df.rename(columns={
-                'battle_time': '對戰時間',
-                'mode': '模式',
-                'map': '地圖',
-                'type': '類型',
-                'my_brawler': '我方英雄',
-                'result': '戰果',
-                'brawler_trophies': '英雄盃數'
-            })
-            
-            def check_bo3(row):
-                if row.get('類型') in ['soloRanked', 'teamRanked']:
-                    try: return 'BO3' if int(row.get('英雄盃數', 0)) >= 13 else 'BO1'
-                    except: return 'BO3'
-                return '一般'
-            
-            def determine_season(r):
-                if r.get('類型') not in ['soloRanked', 'teamRanked']: return ''
-                dt_str = str(r.get('對戰時間', ''))
-                try:
-                    if datetime.strptime(dt_str, '%Y%m%dT%H%M%S.000Z') <= datetime(2026, 8, 19, 23, 59, 59): 
-                        return '47'
-                    return str(current_season_id)
-                except: return '48'
+        def determine_season(r):
+            if r.get('類型') not in ['soloRanked', 'teamRanked']: return ''
+            dt_str = str(r.get('對戰時間', ''))
+            try:
+                if datetime.strptime(dt_str, '%Y%m%dT%H%M%S.000Z') <= datetime(2026, 8, 19, 23, 59, 59): 
+                    return '47'
+                return str(current_season_id)
+            except: return '48'
 
-            df['排位機制'] = df.apply(check_bo3, axis=1)
-            df['賽季'] = df.apply(determine_season, axis=1)
-            
-            df_all_time_grouped = process_and_group_dataframe(df)
-            ui_all_time = build_ui_dict(df_all_time_grouped)
-            ranked_seasons_all_time = build_ranked_ui_dict(df_all_time_grouped)
-            
-            # 🔥 完美修復「本次區間」：使用精準同步的 UTC 時間
-            df_session = df[df['對戰時間'] > server_start_utc_str].copy()
-            
+        df['排位機制'] = df.apply(check_bo3, axis=1)
+        df['賽季'] = df.apply(determine_season, axis=1)
+        
+        df_all_time_grouped = process_and_group_dataframe(df)
+        ui_all_time = build_ui_dict(df_all_time_grouped)
+        ranked_seasons_all_time = build_ranked_ui_dict(df_all_time_grouped)
+        
+        # 🔥 動態套用前端傳來的精準 Session 時間！
+        if session:
+            df_session = df[df['對戰時間'] > session].copy()
             df_session_grouped = process_and_group_dataframe(df_session)
             ui_session = build_ui_dict(df_session_grouped)
             ranked_seasons_session = build_ranked_ui_dict(df_session_grouped)
+        else:
+            ui_session = empty_view
 
-    app_data = {
+    return {
         "current_player": {
             'name': player_name,
             'color': "#00FFAA", 'trophies': current_trophies, 'diff_trophies': '+0', 
@@ -444,7 +438,31 @@ def pro_dashboard(tag: str = ""):
             'ranked_seasons_all_time': ranked_seasons_all_time
         }
     }
+
+# 🔥 新增：供前端背景自動刷新的 API Endpoint
+@app.get("/api/data")
+def api_data(tag: str = Query(""), session: str = Query("")):
+    return JSONResponse(content=get_player_app_data(tag, session))
+
+@app.get("/")
+def pro_dashboard(tag: str = "", session: str = ""):
+    if not supabase:
+        return HTMLResponse("<h1>資料庫連線失敗，請檢查環境變數。</h1>")
+
+    tag = tag.strip().upper()
+    if tag and not tag.startswith("#"):
+        tag = "#" + tag
+
+    dashboard_display_nav = "grid" if tag else "none"
+    dashboard_display = "block" if tag else "none"
+    dashboard_display_search = "flex" if tag else "none"
+    welcome_display = "block" if not tag else "none"
+    refresh_status_text = "等待玩家輸入標籤"
     
+    if tag:
+        refresh_status_text = "資料庫同步完成"
+
+    app_data = get_player_app_data(tag, session)
     js_string = json.dumps(app_data, ensure_ascii=False)
     
     html_template = """
@@ -663,7 +681,7 @@ def pro_dashboard(tag: str = ""):
                     
                     <form action="/" method="GET" id="track-form" style="display:flex; align-items:center; gap: 10px; margin:0;">
                         <span id="lbl-tag" style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3); display: inline-block;">請輸入玩家標籤：</span>
-                        <input type="text" name="tag" id="input-tag" value="__CURRENT_TAG__" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
+                        <input type="text" id="input-tag" value="__CURRENT_TAG__" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
                         <button type="submit" id="btn-track" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 0; width: 80px; text-align: center; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s; white-space:nowrap;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
                     </form>
 
@@ -770,7 +788,7 @@ def pro_dashboard(tag: str = ""):
                     m_bounty: '搶星大作戰', m_gem: '寶石爭奪戰', m_heist: '金庫攻防戰', m_ball: '亂鬥足球', m_hot: '據點搶奪戰', m_knock: '極限淘汰賽',
                     c_rk: '🏅 排位賽', c_ca: '⏳ 一般模式', c_sp: '🎪 特別活動', c_tot: '📊 總戰績',
                     rk_ses: '🏅 排位戰績 (本次)', rk_all: '🏅 排位總計 (歷史)',
-                    no_rk_ses: '本次區間尚未進行任何排位賽', no_rk_all: '資料庫中尚無排位賽紀錄',
+                    no_rk_ses: '本次尚未進行排位賽', no_rk_all: '資料庫中尚無排位賽紀錄',
                     season: ' 第 {s} 賽季', ses_match: '本次對戰', total_match: '總局數: ',
                     no_hero: '(本次未出戰)', hero_ses: '⚔️ 本次出戰英雄 ({n}場)',
                     req_3: '(該模式需出場滿 3 次才能計算排行榜)', pr_top: '📊 出場率 Top 3', wr_top: '🏆 勝率 Top 3',
@@ -853,7 +871,7 @@ def pro_dashboard(tag: str = ""):
                 }
             };
 
-            // 🔥 修復：中文化的按鈕文字判斷
+            // 🔥 修復：繁中帳號的命名 Bug
             function getSlotName(index) {
                 if (index === 1) {
                     if (currentLang === 'zh') return '大號';
@@ -949,12 +967,18 @@ def pro_dashboard(tag: str = ""):
                 panel.innerHTML = html;
             }
 
+            // 🔥 修復：切換按鈕時精準呼叫專屬 Session
             function handleAccClick(slotIndex) {
                 let tag = localStorage.getItem('acc' + slotIndex);
-
                 if (tag) {
                     if (currentUrlTag !== tag.toUpperCase()) {
-                        window.location.href = '/?tag=' + encodeURIComponent(tag);
+                        let sessionStart = sessionStorage.getItem('session_start_' + tag);
+                        if (!sessionStart) {
+                            let now = new Date();
+                            sessionStart = now.toISOString().replace(/[-:]/g, '').split('.')[0] + '.000Z';
+                            sessionStorage.setItem('session_start_' + tag, sessionStart);
+                        }
+                        window.location.href = '/?tag=' + encodeURIComponent(tag) + '&session=' + encodeURIComponent(sessionStart);
                     }
                 } else {
                     sessionStorage.setItem('active_slot', slotIndex);
@@ -979,15 +1003,21 @@ def pro_dashboard(tag: str = ""):
                 }
             }
 
+            // 🔥 修復：現在就是現在，每次提交都會產生全新的精準時間戳
             document.getElementById('track-form').addEventListener('submit', function(event) {
+                event.preventDefault(); // 阻擋預設送出，交由我們動態附加 session
                 let inputEl = document.getElementById('input-tag');
                 if(!inputEl) return;
                 let tag = inputEl.value.trim().toUpperCase();
                 if (!tag) return;
                 if (!tag.startsWith('#')) tag = '#' + tag;
 
+                // 產生現在精確到毫秒的時間作為「本次」的起點
+                let now = new Date();
+                let sessionStart = now.toISOString().replace(/[-:]/g, '').split('.')[0] + '.000Z';
+                sessionStorage.setItem('session_start_' + tag, sessionStart);
+
                 let activeSlot = sessionStorage.getItem('active_slot');
-                
                 if (activeSlot) {
                     localStorage.setItem('acc' + activeSlot, tag);
                 } else {
@@ -1004,6 +1034,8 @@ def pro_dashboard(tag: str = ""):
                         }
                     }
                 }
+                
+                window.location.href = '/?tag=' + encodeURIComponent(tag) + '&session=' + encodeURIComponent(sessionStart);
             });
             
             function showInputForm() {
@@ -1491,6 +1523,25 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('btn-align-center').classList.toggle('active', align === 'center');
                 document.getElementById('btn-align-right').classList.toggle('active', align === 'flex-end');
             }
+
+            // 🔥 修復：真・動態資料自動刷新 (呼叫 /api/data)
+            setInterval(() => {
+                const mModal = document.getElementById('searchModal');
+                if (mModal && mModal.style.display !== 'flex' && currentUrlTag) {
+                    const urlSession = new URLSearchParams(window.location.search).get('session') || '';
+                    fetch(`/api/data?tag=${encodeURIComponent(currentUrlTag)}&session=${encodeURIComponent(urlSession)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            appData = data;
+                            window.appData = appData;
+                            render();
+                        })
+                        .catch(e => console.error("Auto refresh failed:", e));
+                } else if (mModal && mModal.style.display === 'flex') {
+                    const rStatus = document.getElementById('refresh-status');
+                    if(rStatus) rStatus.innerText = "(為避免干擾閱讀，資料更新已暫停，關閉彈窗後恢復更新)";
+                }
+            }, 30000);
 
             document.getElementById('lang-select').value = currentLang;
             setLang(currentLang);
