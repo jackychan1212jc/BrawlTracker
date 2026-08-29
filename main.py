@@ -460,12 +460,13 @@ def pro_dashboard(tag: str = ""):
             
             .nav-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-bottom: 25px; gap: 15px; }
             .nav-group { display: flex; gap: 10px; background-color: #121212; padding: 5px; border-radius: 10px; border: 1px solid #2A323C; }
-            .nav-btn { background: none; border: none; color: #555555; font-size: 16px; font-weight: bold; cursor: pointer; padding: 8px 20px; border-radius: 6px; transition: all 0.3s; font-family: 'Consolas', monospace; }
+            .nav-btn { background: none; border: none; color: #AAAAAA; font-size: 16px; font-weight: bold; cursor: pointer; padding: 8px 20px; border-radius: 6px; transition: all 0.3s; font-family: 'Consolas', monospace; }
             .nav-btn:hover { background-color: #2A323C; color: #FFFFFF !important; }
-            .nav-btn.active { background-color: #2A323C; }
+            .nav-btn.active { background-color: #2A323C; color: var(--theme-color); }
             
+            /* ✨ 帳號切換按鈕亮度與 nav-btn 統一，採用 #AAAAAA */
             .top-acc-container { display: flex; gap: 6px; background-color: #121212; padding: 4px; border-radius: 10px; border: 1px solid #2A323C; align-items: center; }
-            .top-acc-btn { background: transparent; border: none; color: #555555; padding: 6px 16px; font-weight: bold; cursor: pointer; font-size: 14px; border-radius: 6px; transition: 0.2s; font-family: 'Consolas', monospace; pointer-events: auto; }
+            .top-acc-btn { background: transparent; border: none; color: #AAAAAA; padding: 6px 16px; font-weight: bold; cursor: pointer; font-size: 14px; border-radius: 6px; transition: 0.2s; font-family: 'Consolas', monospace; pointer-events: auto; }
             .top-acc-btn:hover:not(.active) { background: #2A323C; color: #FFFFFF; }
             .top-acc-btn.active { background: var(--theme-color); color: #121212; opacity: 1 !important; }
 
@@ -733,7 +734,7 @@ def pro_dashboard(tag: str = ""):
                     season: ' 第 {s} 賽季', ses_match: '本次對戰', total_match: '總局數: ',
                     no_hero: '(本次未出戰)', hero_ses: '⚔️ 本次出戰英雄 ({n}場)',
                     req_3: '(該模式需出場滿 3 次才能計算排行榜)', pr_top: '📊 出場率 Top 3', wr_top: '🏆 勝率 Top 3',
-                    trap: '⚠️ 版本陷阱 (頭鐵掉分機)', gem: '💎 惹力神角 (上分奇兵)', wr: '勝率',
+                    trap: '⚠️ 版本陷阱 (頭鐵掉分機)', gem: '💎 潛力神角 (上分奇兵)', wr: '勝率',
                     modal_tot: '【 全模式地圖勝率 (歷史總計) 】', modal_not_found: '資料庫中找不到包含【{q}】的英雄紀錄。',
                     cat_tot: '分類總計', sum_wl: '總勝負', pr: '出場率',
                     current_player_lbl: '當前玩家：', btn_reenter: '重新輸入',
@@ -903,13 +904,13 @@ def pro_dashboard(tag: str = ""):
                 renderTopAccButtons();
             }
 
-            // ✨ 三個按鈕永遠常駐顯示
+            // ✨ 將切換帳號的按鈕換成淺色，並減低空位的透明度變暗
             function renderTopAccButtons() {
                 const container = document.getElementById('top-acc-container');
                 if (!container) return;
                 
                 let html = "";
-                let activeSlot = sessionStorage.getItem('active_slot');
+                let activeSlot = sessionStorage.getItem('active_slot') || '1';
 
                 // 確認當前正在觀看的 tag 對應到哪一個按鈕
                 if (currentUrlTag) {
@@ -917,6 +918,7 @@ def pro_dashboard(tag: str = ""):
                         let savedTag = localStorage.getItem('acc'+i);
                         if (savedTag === currentUrlTag) {
                             activeSlot = i.toString();
+                            sessionStorage.setItem('active_slot', activeSlot);
                             break;
                         }
                     }
@@ -926,8 +928,8 @@ def pro_dashboard(tag: str = ""):
                 for(let i=1; i<=3; i++) {
                     let tag = localStorage.getItem('acc'+i);
                     let isActive = (activeSlot === i.toString() && (tag === currentUrlTag || !currentUrlTag)) ? 'active' : '';
-                    let opacity = tag ? '1' : '0.4'; // 空的按鈕變暗
-                    let title = tag ? tag : (currentLang === 'zh' ? '點擊設定帳號' : 'Click to bind account');
+                    let opacity = tag ? '1' : '0.6'; 
+                    let title = tag ? tag : (currentLang === 'zh' ? '空位 (點擊設定)' : 'Empty (Click to set)');
                     let btnName = currentLang === 'zh' ? MY_ACCOUNTS[i-1].nameZh : MY_ACCOUNTS[i-1].nameEn;
                     
                     html += `<button id="btn-acc-${i}" class="top-acc-btn ${isActive}" onclick="handleAccClick(${i})" title="${title}" style="opacity: ${opacity};">${btnName}</button>`;
