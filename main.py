@@ -361,6 +361,7 @@ def pro_dashboard(tag: str = ""):
     victories_3v3 = 0
     elo_val = 0
     tier = "UNKNOWN"
+    player_name = ""
     ui_all_time = empty_view
     ui_session = empty_view
     ranked_seasons_all_time = {}
@@ -379,6 +380,7 @@ def pro_dashboard(tag: str = ""):
             res = requests.get(url, headers=headers)
             if res.status_code == 200:
                 data = res.json()
+                player_name = data.get("name", "")
                 current_trophies = data.get("trophies", 0)
                 victories_3v3 = data.get("3vs3Victories", 0)
                 elo_val = data.get("rankedElo", 0)
@@ -430,6 +432,7 @@ def pro_dashboard(tag: str = ""):
 
     app_data = {
         "current_player": {
+            'name': player_name,
             'color': "#00FFAA", 'trophies': current_trophies, 'diff_trophies': '+0', 
             'victories_3v3': victories_3v3, 'elo': str(elo_val), 'diff_elo': '+0', 'tier': tier,
             'session': build_js_view_data(ui_session) if tag else empty_view, 
@@ -591,14 +594,24 @@ def pro_dashboard(tag: str = ""):
                 </div>
             </div>
 
+            <!-- 左側區域：玩家名稱顯示取代輸入框 -->
             <div class="header">
                 <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;">
-                    <!-- 加入 JS 攔截器進行本機儲存處理 -->
+                    
+                    <!-- 狀態 1：輸入模式 (預設顯示，成功載入玩家時隱藏) -->
                     <form id="track-form" onsubmit="handleTrackSubmit(event)" style="display:flex; align-items:center; gap: 10px; margin:0;">
                         <span id="lbl-tag" style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3); display: inline-block;">請輸入玩家標籤：</span>
                         <input type="text" id="input-tag" value="__CURRENT_TAG__" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
                         <button type="submit" id="btn-track" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 0; width: 80px; text-align: center; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s; white-space:nowrap;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
                     </form>
+
+                    <!-- ✨ 狀態 2：玩家名稱模式 (成功載入時顯示，隱藏輸入框) -->
+                    <div id="player-name-display" style="display:none; align-items:center; gap: 15px; margin:0;">
+                        <span id="lbl-current-player" style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3); display: inline-block;">當前玩家：</span>
+                        <span id="val-player-name" style="color:#FFFFFF; font-size:26px; font-weight:900; letter-spacing:1px; white-space:nowrap;">-</span>
+                        <button type="button" id="btn-reenter" onclick="showInputForm()" style="background-color:transparent; border:1px solid #2A323C; color:#AAAAAA; font-weight:bold; font-size:14px; padding:6px 15px; border-radius:8px; cursor:pointer; transition: all 0.3s; white-space:nowrap;" onmouseover="this.style.color='#FFF'; this.style.borderColor='var(--theme-color)';" onmouseout="this.style.color='#AAAAAA'; this.style.borderColor='#2A323C';">重新輸入</button>
+                    </div>
+
                 </div>
                 
                 <div style="display: __DASHBOARD_DISPLAY_SEARCH__; align-items: center;">
@@ -680,6 +693,7 @@ def pro_dashboard(tag: str = ""):
             
             const TARGET_SIX_MODES = ['搶星大作戰', '寶石爭奪戰', '金庫攻防戰', '亂鬥足球', '據點搶奪戰', '極限淘汰賽'];
 
+            // 🌐 國際化字典更新：加入了玩家名稱顯示的翻譯
             const i18n = {
                 'zh': {
                     tag_lbl: '請輸入玩家標籤：', track: '追蹤', search_ph: '🔍 搜尋英雄、地圖', search_btn: '查詢',
@@ -700,8 +714,9 @@ def pro_dashboard(tag: str = ""):
                     modal_tot: '【 全模式地圖勝率 (歷史總計) 】', modal_not_found: '資料庫中找不到包含【{q}】的英雄紀錄。',
                     cat_tot: '分類總計', sum_wl: '總勝負', pr: '出場率',
                     acc1: '一帳', acc2: '二帳', acc3: '三帳',
-                    bind_lbl: '綁定 {n} 標籤：', bind_title: '請綁定您的 {n}', bind_desc: '請在上方輸入框填寫玩家標籤，以完成快捷鍵綁定。',
-                    clear_cache: '[ 🗑️ 清除本機綁定紀錄 ]'
+                    bind_lbl: '綁定 {n} 標籤：', bind_title: '請綁定您的 {n}', bind_desc: '請在上方輸入框填寫玩家標籤，以完成綁定。',
+                    clear_cache: '[ 🗑️ 清除本機綁定紀錄 ]',
+                    current_player_lbl: '當前玩家：', btn_reenter: '重新輸入'
                 },
                 'en': {
                     tag_lbl: 'Player Tag:', track: 'Track', search_ph: '🔍 Search Brawler / Map', search_btn: 'Search',
@@ -722,8 +737,9 @@ def pro_dashboard(tag: str = ""):
                     modal_tot: '【 Win Rate by Mode/Map (All-Time) 】', modal_not_found: 'No records found for brawler containing "{q}".',
                     cat_tot: 'Category Total', sum_wl: 'Total W/L', pr: 'Pick Rate',
                     acc1: 'Main', acc2: 'Alt 1', acc3: 'Alt 2',
-                    bind_lbl: 'Bind {n} Tag:', bind_title: 'Bind your {n}', bind_desc: 'Enter your player tag in the input box above to complete the binding.',
-                    clear_cache: '[ 🗑️ Clear Local Data ]'
+                    bind_lbl: 'Bind {n} Tag:', bind_title: 'Bind your {n}', bind_desc: 'Enter your player tag in the input box above to bind.',
+                    clear_cache: '[ 🗑️ Clear Local Data ]',
+                    current_player_lbl: 'Current Player:', btn_reenter: 'Change Tag'
                 }
             };
 
@@ -755,6 +771,13 @@ def pro_dashboard(tag: str = ""):
                     }
                 }
                 window.location.href = '/?tag=' + encodeURIComponent(tag);
+            }
+            
+            // ✨ 切換顯示輸入框 (使用者點擊重新輸入)
+            function showInputForm() {
+                document.getElementById('track-form').style.display = 'flex';
+                document.getElementById('player-name-display').style.display = 'none';
+                document.getElementById('input-tag').focus();
             }
 
             function highlightActiveAcc() {
@@ -808,6 +831,9 @@ def pro_dashboard(tag: str = ""):
                 
                 document.getElementById('input-tag').placeholder = currentLang === 'en' ? '#XXXXXXX' : '#XXXXXXX';
                 document.getElementById('btn-track').innerText = t.track;
+                
+                const lblCurrent = document.getElementById('lbl-current-player'); if(lblCurrent) lblCurrent.innerText = t.current_player_lbl;
+                const btnRe = document.getElementById('btn-reenter'); if(btnRe) btnRe.innerText = t.btn_reenter;
                 
                 const sInp = document.getElementById('searchInput');
                 if(sInp) sInp.placeholder = t.search_ph;
@@ -1094,6 +1120,16 @@ def pro_dashboard(tag: str = ""):
                 
                 document.documentElement.style.setProperty('--theme-color', data.color);
                 applyPageState();
+                
+                // ✨ 這裡處理：如果有取得玩家真實名稱，就隱藏輸入框，改為顯示名稱與重新輸入按鈕
+                if (data.name) {
+                    document.getElementById('track-form').style.display = 'none';
+                    document.getElementById('player-name-display').style.display = 'flex';
+                    document.getElementById('val-player-name').innerText = data.name;
+                } else {
+                    document.getElementById('track-form').style.display = 'flex';
+                    document.getElementById('player-name-display').style.display = 'none';
+                }
                 
                 ['btn-session', 'btn-all_time', 'btn-disp-data', 'btn-disp-bar'].forEach(id => {
                     const el = document.getElementById(id);
