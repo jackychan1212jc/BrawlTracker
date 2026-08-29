@@ -30,8 +30,9 @@ MODE_TRANSLATION = {
 PVE_MODES = ['lastStand', 'bossFight', 'roboRumble', 'bigGame', 'megaBoss']
 TARGET_SIX_MODES = ['搶星大作戰', '寶石爭奪戰', '金庫攻防戰', '亂鬥足球', '據點搶奪戰', '極限淘汰賽']
 
-startup_time_local = datetime.utcnow() + timedelta(hours=8)
-current_local_time_str = startup_time_local.strftime('%Y-%m-%d %H:%M:%S')
+# 🔥 修復 Bug：記錄伺服器啟動時的標準 UTC 時間，確保與官方 API 的時區一致
+startup_time_utc = datetime.utcnow()
+server_start_utc_str = startup_time_utc.strftime('%Y%m%dT%H%M%S.000Z')
 
 def get_wr(w, l, d=0):
     total = w + l + d
@@ -348,6 +349,7 @@ def pro_dashboard(tag: str = ""):
     if tag and not tag.startswith("#"):
         tag = "#" + tag
 
+    # UI 顯示狀態切換
     dashboard_display_nav = "grid" if tag else "none"
     dashboard_display = "block" if tag else "none"
     dashboard_display_search = "flex" if tag else "none"
@@ -424,7 +426,9 @@ def pro_dashboard(tag: str = ""):
             ui_all_time = build_ui_dict(df_all_time_grouped)
             ranked_seasons_all_time = build_ranked_ui_dict(df_all_time_grouped)
             
-            df_session = df[df['對戰時間'] > current_local_time_str.replace('-', '').replace(' ', 'T').replace(':', '') + '.000Z'].copy()
+            # 🔥 完美修復「本次區間」：使用精準同步的 UTC 時間
+            df_session = df[df['對戰時間'] > server_start_utc_str].copy()
+            
             df_session_grouped = process_and_group_dataframe(df_session)
             ui_session = build_ui_dict(df_session_grouped)
             ranked_seasons_session = build_ranked_ui_dict(df_session_grouped)
@@ -485,7 +489,6 @@ def pro_dashboard(tag: str = ""):
             .acc-menu-item.active { border-left: 4px solid var(--theme-color); background-color: rgba(0,255,170,0.05); color: var(--theme-color); padding-left: 12px; }
             .acc-menu-name { font-weight: bold; color: #FFFFFF; font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 14px; }
 
-            /* ✨ DC & YT 按鈕美化設計 */
             .yt-link { display: flex; align-items: center; gap: 8px; background-color: #1A1F24; border: 1px solid #2A323C; padding: 6px 14px; border-radius: 20px; color: #DDDDDD; text-decoration: none; font-family: 'Segoe UI', Tahoma, sans-serif; font-weight: bold; font-size: 14px; transition: all 0.3s ease; pointer-events: auto; }
             .yt-link:hover { background-color: #2A323C; color: #FFFFFF; border-color: #FF0000; box-shadow: 0 0 12px rgba(255, 0, 0, 0.4); transform: translateY(-1px); }
 
@@ -588,7 +591,6 @@ def pro_dashboard(tag: str = ""):
             
             <div style="width: 100%; max-width: 980px; margin: 0 auto; display: flex; justify-content: space-between; padding: 0 40px; box-sizing: border-box; pointer-events: none; z-index: 5;">
                 
-                <!-- ✨ YT 與 DC 連結：採用 Flex 排列，間距適中 -->
                 <div style="pointer-events: auto; display: flex; gap: 10px;">
                     <a href="http://www.youtube.com/@Jacky%E9%99%B3%E7%9A%AE" target="_blank" class="yt-link" title="前往 Jacky陳皮 的 YouTube 頻道">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="#FF0000">
@@ -851,14 +853,17 @@ def pro_dashboard(tag: str = ""):
                 }
             };
 
+            // 🔥 修復：中文化的按鈕文字判斷
             function getSlotName(index) {
                 if (index === 1) {
-                    if (currentLang === 'zh' || currentLang === 'en') return 'Main';
+                    if (currentLang === 'zh') return '大號';
+                    if (currentLang === 'en') return 'Main';
                     if (currentLang === 'jp') return 'メイン';
                     if (currentLang === 'kr') return '본계정';
                 }
                 let altNum = index - 1;
-                if (currentLang === 'zh' || currentLang === 'en') return 'Alt ' + altNum;
+                if (currentLang === 'zh') return '小號 ' + altNum;
+                if (currentLang === 'en') return 'Alt ' + altNum;
                 if (currentLang === 'jp') return 'サブ ' + altNum;
                 if (currentLang === 'kr') return '부계정 ' + altNum;
             }
@@ -1434,35 +1439,45 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('val-elo-rk').innerHTML = `${eloDisplay} <span class="diff">(${eloDiffStr})</span>`;
                 
                 const tierElem = document.getElementById('val-tier');
-                tierElem.innerText = tierDisplay;
-                tierElem.style.color = tierColor;
-                tierElem.style.textShadow = `0 0 15px ${tierColor}90`;
+                if (tierElem) {
+                    tierElem.innerText = tierDisplay;
+                    tierElem.style.color = tierColor;
+                    tierElem.style.textShadow = `0 0 15px ${tierColor}90`;
+                }
                 
                 const tierElemRk = document.getElementById('val-tier-rk');
-                tierElemRk.innerText = tierDisplay;
-                tierElemRk.style.color = tierColor;
-                tierElemRk.style.textShadow = `0 0 15px ${tierColor}90`;
+                if (tierElemRk) {
+                    tierElemRk.innerText = tierDisplay;
+                    tierElemRk.style.color = tierColor;
+                    tierElemRk.style.textShadow = `0 0 15px ${tierColor}90`;
+                }
                 
-                document.getElementById('summary-section').innerHTML = `
-                    ${createRowHtml(TL('🏅 排位賽'), viewData.summary.ranked, true)}
-                    ${createRowHtml(TL('⏳ 一般模式'), viewData.summary.casual, true)}
-                    ${createRowHtml(TL('🎪 特別活動'), viewData.summary.special, true)}
-                    ${createRowHtml(TL('📊 總戰績'), viewData.summary.total, true, true)}
-                `;
+                const sumSec = document.getElementById('summary-section');
+                if (sumSec) {
+                    sumSec.innerHTML = `
+                        ${createRowHtml(TL('🏅 排位賽'), viewData.summary.ranked, true)}
+                        ${createRowHtml(TL('⏳ 一般模式'), viewData.summary.casual, true)}
+                        ${createRowHtml(TL('🎪 特別活動'), viewData.summary.special, true)}
+                        ${createRowHtml(TL('📊 總戰績'), viewData.summary.total, true, true)}
+                    `;
+                }
                 
                 const rkLabel = isSession ? t.rk_ses : t.rk_all;
-                document.getElementById('summary-ranked-only').innerHTML = createRowHtml(rkLabel, viewData.summary.ranked, true);
+                const sumRkOnly = document.getElementById('summary-ranked-only');
+                if (sumRkOnly) sumRkOnly.innerHTML = createRowHtml(rkLabel, viewData.summary.ranked, true);
 
                 const grid = document.getElementById('brawler-grid');
-                grid.innerHTML = '';
-                viewData.brawlers.forEach(cat => {
-                    let catHtml = `<div class="brawler-cat"><h3>${cat.icon} ${TL(cat.title)}</h3>`;
-                    cat.items.forEach(b => {
-                        catHtml += createRowHtml(`🦸 ${b.name}`, b);
+                if (grid) {
+                    grid.innerHTML = '';
+                    viewData.brawlers.forEach(cat => {
+                        let catHtml = `<div class="brawler-cat"><h3>${cat.icon} ${TL(cat.title)}</h3>`;
+                        cat.items.forEach(b => {
+                            catHtml += createRowHtml(`🦸 ${b.name}`, b);
+                        });
+                        catHtml += `</div>`;
+                        grid.innerHTML += catHtml;
                     });
-                    catHtml += `</div>`;
-                    grid.innerHTML += catHtml;
-                });
+                }
                 
                 renderRankedPage(data);
             }
