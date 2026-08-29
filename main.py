@@ -30,6 +30,10 @@ MODE_TRANSLATION = {
 PVE_MODES = ['lastStand', 'bossFight', 'roboRumble', 'bigGame', 'megaBoss']
 TARGET_SIX_MODES = ['搶星大作戰', '寶石爭奪戰', '金庫攻防戰', '亂鬥足球', '據點搶奪戰', '極限淘汰賽']
 
+# 記錄伺服器啟動時的標準 UTC 時間，確保與官方 API 的時區一致
+startup_time_utc = datetime.utcnow()
+server_start_utc_str = startup_time_utc.strftime('%Y%m%dT%H%M%S.000Z')
+
 def get_wr(w, l, d=0):
     total = w + l + d
     return f"{w/total*100:.1f}%" if total > 0 else "0.0%"
@@ -336,7 +340,6 @@ def build_js_view_data(ui_data):
     return {'summary': summary, 'brawlers': brawlers, 'brawler_details': brawler_details, 'map_stats': js_map_stats}
 
 
-# 🔥 新增：核心資料打包引擎，供前端與 API 共用
 def get_player_app_data(tag: str, session: str):
     empty_view = {'summary': {'ranked': {'txt': "0W - 0L (0.0%)", 'w': 0, 'l': 0, 'd': 0}, 'casual': {'txt': "0W - 0L (0.0%)", 'w': 0, 'l': 0, 'd': 0}, 'special': {'txt': "0W - 0L (0.0%)", 'w': 0, 'l': 0, 'd': 0}, 'total': {'txt': "0W - 0L (0.0%)", 'w': 0, 'l': 0, 'd': 0}}, 'brawlers': [], 'brawler_details': {}, 'map_stats': []}
     
@@ -418,7 +421,6 @@ def get_player_app_data(tag: str, session: str):
         ui_all_time = build_ui_dict(df_all_time_grouped)
         ranked_seasons_all_time = build_ranked_ui_dict(df_all_time_grouped)
         
-        # 🔥 動態套用前端傳來的精準 Session 時間！
         if session:
             df_session = df[df['對戰時間'] > session].copy()
             df_session_grouped = process_and_group_dataframe(df_session)
@@ -439,7 +441,6 @@ def get_player_app_data(tag: str, session: str):
         }
     }
 
-# 🔥 新增：供前端背景自動刷新的 API Endpoint
 @app.get("/api/data")
 def api_data(tag: str = Query(""), session: str = Query("")):
     return JSONResponse(content=get_player_app_data(tag, session))
@@ -871,19 +872,24 @@ def pro_dashboard(tag: str = "", session: str = ""):
                 }
             };
 
-            // 🔥 修復：繁中帳號的命名 Bug
+            // 🔥 終極版方案 B：動態玩家名稱系統
             function getSlotName(index) {
-                if (index === 1) {
-                    if (currentLang === 'zh') return '大號';
-                    if (currentLang === 'en') return 'Main';
-                    if (currentLang === 'jp') return 'メイン';
-                    if (currentLang === 'kr') return '본계정';
+                let savedTag = localStorage.getItem('acc' + index);
+                if (savedTag) {
+                    let savedName = localStorage.getItem('saved_name_' + savedTag);
+                    if (savedName) {
+                        // 超過 4 個字自動截斷，保持按鈕視覺整齊
+                        return savedName.length > 4 ? savedName.substring(0, 4) + '..' : savedName;
+                    }
+                    // 如果抓不到名字，先顯示標籤前 6 碼
+                    return savedTag.substring(0, 6); 
                 }
-                let altNum = index - 1;
-                if (currentLang === 'zh') return '小號 ' + altNum;
-                if (currentLang === 'en') return 'Alt ' + altNum;
-                if (currentLang === 'jp') return 'サブ ' + altNum;
-                if (currentLang === 'kr') return '부계정 ' + altNum;
+                
+                // 尚未綁定的空位
+                if (currentLang === 'zh') return '空位 ' + index;
+                if (currentLang === 'en') return 'Slot ' + index;
+                if (currentLang === 'jp') return '枠 ' + index;
+                if (currentLang === 'kr') return '슬롯 ' + index;
             }
 
             function addSlot() {
@@ -931,6 +937,7 @@ def pro_dashboard(tag: str = "", session: str = ""):
                 }
             });
 
+            // 🔥 下拉選單改為「左側欄位編號、右側玩家全名」
             function renderAccDropdown() {
                 const panel = document.getElementById('acc-expanded-panel');
                 if (!panel) return;
@@ -947,8 +954,13 @@ def pro_dashboard(tag: str = "", session: str = ""):
 
                 for(let i=1; i<=slotCount; i++) {
                     let tag = localStorage.getItem('acc'+i);
-                    let btnName = getSlotName(i);
                     let isActive = (activeSlot === i.toString() && (tag === currentUrlTag || !currentUrlTag)) ? 'active' : '';
+                    
+                    let leftLabel = "";
+                    if (currentLang === 'zh') leftLabel = '欄位 ' + i;
+                    if (currentLang === 'en') leftLabel = 'Slot ' + i;
+                    if (currentLang === 'jp') leftLabel = 'スロット ' + i;
+                    if (currentLang === 'kr') leftLabel = '슬롯 ' + i;
                     
                     let displayName = "—"; 
                     let displayColor = "#555";
@@ -960,16 +972,16 @@ def pro_dashboard(tag: str = "", session: str = ""):
                     }
                     
                     html += `<div class="acc-menu-item ${isActive}" onclick="handleAccClick(${i}); toggleAccDropdown();">
-                                <span>${btnName}</span>
+                                <span>${leftLabel}</span>
                                 <span class="acc-menu-name" style="color: ${displayColor}">${displayName}</span>
                              </div>`;
                 }
                 panel.innerHTML = html;
             }
 
-            // 🔥 修復：切換按鈕時精準呼叫專屬 Session
             function handleAccClick(slotIndex) {
                 let tag = localStorage.getItem('acc' + slotIndex);
+
                 if (tag) {
                     if (currentUrlTag !== tag.toUpperCase()) {
                         let sessionStart = sessionStorage.getItem('session_start_' + tag);
@@ -1003,16 +1015,14 @@ def pro_dashboard(tag: str = "", session: str = ""):
                 }
             }
 
-            // 🔥 修復：現在就是現在，每次提交都會產生全新的精準時間戳
             document.getElementById('track-form').addEventListener('submit', function(event) {
-                event.preventDefault(); // 阻擋預設送出，交由我們動態附加 session
+                event.preventDefault(); 
                 let inputEl = document.getElementById('input-tag');
                 if(!inputEl) return;
                 let tag = inputEl.value.trim().toUpperCase();
                 if (!tag) return;
                 if (!tag.startsWith('#')) tag = '#' + tag;
 
-                // 產生現在精確到毫秒的時間作為「本次」的起點
                 let now = new Date();
                 let sessionStart = now.toISOString().replace(/[-:]/g, '').split('.')[0] + '.000Z';
                 sessionStorage.setItem('session_start_' + tag, sessionStart);
@@ -1175,7 +1185,7 @@ def pro_dashboard(tag: str = "", session: str = ""):
                     },
                     'kr': {
                         '🏅 排位賽': '🏅 랭크전', '⏳ 一般模式': '⏳ 일반 모드', '🎯 挑戰': '🎯 챌린지', '🎪 特別活動': '🎪 특수 이벤트', '📊 總戰績': '📊 전체 전적',
-                        '排位賽': '랭크전', '一般模式': '일반 모드', '挑戰': '챌린지', '特別活動': '특수 이벤트',
+                        '排位賽': '랭크전', '일반 모드': '일반 모드', '挑戰': '챌린지', '特別活動': '특수 이벤트',
                         '搶星大作戰': '바운티', '寶石爭奪戰': '젬 그랩', '金庫攻防戰': '하이스트', 
                         '亂鬥足球': '브롤 볼', '據點搶奪戰': '핫 존', '極限淘汰賽': '녹아웃',
                         '單人生死鬥': '솔로 쇼다운', '雙人生死鬥': '듀오 쇼다운', '亂鬥擂台': '듀얼',
@@ -1524,7 +1534,6 @@ def pro_dashboard(tag: str = "", session: str = ""):
                 document.getElementById('btn-align-right').classList.toggle('active', align === 'flex-end');
             }
 
-            // 🔥 修復：真・動態資料自動刷新 (呼叫 /api/data)
             setInterval(() => {
                 const mModal = document.getElementById('searchModal');
                 if (mModal && mModal.style.display !== 'flex' && currentUrlTag) {
