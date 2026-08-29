@@ -348,6 +348,7 @@ def pro_dashboard(tag: str = ""):
     if tag and not tag.startswith("#"):
         tag = "#" + tag
 
+    # UI 顯示狀態切換
     dashboard_display_nav = "grid" if tag else "none"
     dashboard_display = "block" if tag else "none"
     dashboard_display_search = "flex" if tag else "none"
@@ -592,7 +593,8 @@ def pro_dashboard(tag: str = ""):
 
             <div style="position: absolute; right: max(5vw, calc(50vw - 450px)); top: 0; bottom: 0; display: flex; align-items: center; gap: 20px; z-index: 10; pointer-events: auto; padding-right: 40px;">
                 <div id="top-acc-container" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px;">
-                    </div>
+                    <!-- JS 動態生成 -->
+                </div>
 
                 <div class="lang-switch" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px; pointer-events: auto;">
                     <button id="lang-zh" onclick="setLang('zh')" style="background: var(--theme-color); color: #121212; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">繁</button>
@@ -629,9 +631,9 @@ def pro_dashboard(tag: str = ""):
             <div class="header">
                 <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;">
                     
-                    <form id="track-form" onsubmit="handleTrackSubmit(event)" style="display:flex; align-items:center; gap: 10px; margin:0;">
+                    <form id="track-form" action="/" method="GET" style="display:flex; align-items:center; gap: 10px; margin:0;">
                         <span id="lbl-tag" style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3); display: inline-block;">請輸入玩家標籤：</span>
-                        <input type="text" id="input-tag" value="__CURRENT_TAG__" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
+                        <input type="text" name="tag" id="input-tag" value="__CURRENT_TAG__" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
                         <button type="submit" id="btn-track" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 0; width: 80px; text-align: center; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s; white-space:nowrap;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
                     </form>
 
@@ -685,9 +687,6 @@ def pro_dashboard(tag: str = ""):
             <div class="footer">
                 <span id="footer-cloud">系統運作於 Render 雲端環境</span> <br>
                 <span id="refresh-status" style="color:var(--theme-color);">__REFRESH_TEXT__</span>
-                <div style="margin-top: 25px;">
-                    <a href="javascript:void(0);" onclick="localStorage.clear(); sessionStorage.clear(); window.location.href='/';" id="btn-clear-cache" style="color: #555; text-decoration: none; font-size: 12px; transition: color 0.3s;" onmouseover="this.style.color='#FF5555'" onmouseout="this.style.color='#555'">[ 🗑️ 清除本機綁定紀錄 ]</a>
-                </div>
             </div>
         </div>
 
@@ -702,6 +701,16 @@ def pro_dashboard(tag: str = ""):
         </div>
 
         <script>
+            // ==========================================
+            // ⚙️ 帳號配置區 (純粹寫死，絕對不會亂跳)
+            // ==========================================
+            const MY_ACCOUNTS = [
+                { nameZh: 'Main', nameEn: 'Main', tag: '#9P2GP0UL9' }, // 請填寫一帳
+                { nameZh: 'Alt 1', nameEn: 'Alt 1', tag: '#2QGP2L0VP' }, // 請填寫二帳
+                { nameZh: 'Alt 2', nameEn: 'Alt 2', tag: '' }          // 若留空 (例如 '')，該按鈕就會自動隱藏
+            ];
+            // ==========================================
+
             let appData = __APP_DATA_HERE__;
             window.appData = appData;
             
@@ -741,11 +750,7 @@ def pro_dashboard(tag: str = ""):
                     trap: '⚠️ 版本陷阱 (頭鐵掉分機)', gem: '💎 潛力神角 (上分奇兵)', wr: '勝率',
                     modal_tot: '【 全模式地圖勝率 (歷史總計) 】', modal_not_found: '資料庫中找不到包含【{q}】的英雄紀錄。',
                     cat_tot: '分類總計', sum_wl: '總勝負', pr: '出場率',
-                    acc1: '一帳', acc2: '二帳', acc3: '三帳',
-                    bind_lbl: '綁定 {n} 標籤：', bind_title: '請綁定您的 {n}', bind_desc: '請在上方輸入框填寫玩家標籤，以完成綁定。',
-                    clear_cache: '[ 🗑️ 清除本機綁定紀錄 ]',
-                    current_player_lbl: '當前玩家：', btn_reenter: '重新輸入',
-                    empty_slot: '空欄位 (點擊以查詢新帳號)'
+                    current_player_lbl: '當前玩家：', btn_reenter: '重新輸入'
                 },
                 'en': {
                     tag_lbl: 'Player Tag:', track: 'Track', search_ph: '🔍 Search Brawler / Map', search_btn: 'Search',
@@ -765,64 +770,13 @@ def pro_dashboard(tag: str = ""):
                     trap: '⚠️ Meta Trap (Trophy Drain)', gem: '💎 Hidden Gem (Trophy Pusher)', wr: 'Win Rate',
                     modal_tot: '【 Win Rate by Mode/Map (All-Time) 】', modal_not_found: 'No records found for brawler containing "{q}".',
                     cat_tot: 'Category Total', sum_wl: 'Total W/L', pr: 'Pick Rate',
-                    acc1: 'Main', acc2: 'Alt 1', acc3: 'Alt 2',
-                    bind_lbl: 'Bind {n} Tag:', bind_title: 'Bind your {n}', bind_desc: 'Enter your player tag in the input box above to bind.',
-                    clear_cache: '[ 🗑️ Clear Local Data ]',
-                    current_player_lbl: 'Current Player:', btn_reenter: 'Change Tag',
-                    empty_slot: 'Empty Slot (Click to track new account)'
+                    current_player_lbl: 'Current Player:', btn_reenter: 'Change Tag'
                 }
             };
-
-            function handleAccClick(slot) {
-                let tag = localStorage.getItem('acc' + slot);
-
-                if (tag) {
-                    if (currentUrlTag !== tag) {
-                        window.location.href = '/?tag=' + encodeURIComponent(tag);
-                    }
-                } else {
-                    // 重點修復：點擊空槽位，記住該槽位，並一律跳回首頁讓用戶輸入
-                    sessionStorage.setItem('active_slot', slot);
-                    if (currentUrlTag) {
-                        window.location.href = '/';
-                    } else {
-                        applyLangText();
-                        renderTopAccButtons();
-                        let inputEl = document.getElementById('input-tag');
-                        if (inputEl) {
-                            inputEl.focus();
-                            inputEl.style.transition = 'all 0.3s';
-                            inputEl.style.borderColor = 'var(--theme-color)';
-                            inputEl.style.boxShadow = '0 0 15px var(--theme-color)';
-                            setTimeout(() => {
-                                inputEl.style.boxShadow = 'none';
-                                inputEl.style.borderColor = '#2A323C';
-                            }, 800);
-                        }
-                    }
-                }
-            }
-
-            function handleTrackSubmit(event) {
-                event.preventDefault();
-                let inputEl = document.getElementById('input-tag');
-                if(!inputEl) return;
-                let tag = inputEl.value.trim().toUpperCase();
-                if (!tag) return;
-                if (!tag.startsWith('#')) tag = '#' + tag;
-
-                let slot = sessionStorage.getItem('active_slot');
-                if (!slot) slot = '1';
-                localStorage.setItem('acc' + slot, tag);
-                sessionStorage.removeItem('active_slot'); 
-
-                window.location.href = '/?tag=' + encodeURIComponent(tag);
-            }
             
             function showInputForm() {
                 document.getElementById('track-form').style.display = 'flex';
                 document.getElementById('player-name-display').style.display = 'none';
-                document.getElementById('input-tag').value = '';
                 document.getElementById('input-tag').focus();
             }
 
@@ -845,21 +799,9 @@ def pro_dashboard(tag: str = ""):
             function applyLangText() {
                 const t = i18n[currentLang];
                 
-                let settingSlot = sessionStorage.getItem('active_slot');
-                let lblTag = document.getElementById('lbl-tag');
-                let wTitle = document.getElementById('welcome-title');
-                let wDesc = document.getElementById('welcome-desc');
-
-                if (!currentUrlTag && settingSlot && !localStorage.getItem('acc' + settingSlot)) {
-                    let accName = t['acc' + settingSlot];
-                    if(lblTag) lblTag.innerText = t.bind_lbl.replace('{n}', accName);
-                    if(wTitle) wTitle.innerText = t.bind_title.replace('{n}', accName);
-                    if(wDesc) wDesc.innerHTML = t.bind_desc;
-                } else {
-                    if(lblTag) lblTag.innerText = t.tag_lbl;
-                    if(wTitle) wTitle.innerText = t.welcome_t;
-                    if(wDesc) wDesc.innerHTML = t.welcome_d;
-                }
+                let lblTag = document.getElementById('lbl-tag'); if(lblTag) lblTag.innerText = t.tag_lbl;
+                let wTitle = document.getElementById('welcome-title'); if(wTitle) wTitle.innerText = t.welcome_t;
+                let wDesc = document.getElementById('welcome-desc'); if(wDesc) wDesc.innerHTML = t.welcome_d;
                 
                 document.getElementById('input-tag').placeholder = currentLang === 'en' ? '#XXXXXXX' : '#XXXXXXX';
                 document.getElementById('btn-track').innerText = t.track;
@@ -873,8 +815,6 @@ def pro_dashboard(tag: str = ""):
                 if(sBtn) sBtn.innerText = t.search_btn;
                 
                 document.getElementById('footer-cloud').innerHTML = t.footer;
-                const btnClear = document.getElementById('btn-clear-cache');
-                if (btnClear) btnClear.innerText = t.clear_cache;
                 
                 const bpt = document.getElementById('btn-page-toggle');
                 if (bpt) bpt.innerText = activePage === 'main' ? t.btn_ranked : t.btn_main;
@@ -905,39 +845,29 @@ def pro_dashboard(tag: str = ""):
                 renderTopAccButtons();
             }
 
-            // ✨ 三個按鈕永遠常駐顯示
             function renderTopAccButtons() {
                 const container = document.getElementById('top-acc-container');
                 if (!container) return;
                 
-                const t = i18n[currentLang];
-                const accNames = [t.acc1, t.acc2, t.acc3];
                 let html = "";
+                let hasAny = false;
                 
-                let activeSlot = sessionStorage.getItem('active_slot') || '1';
-
-                // 為了確保萬一用戶直接輸入網址，我們嘗試把 tag 對應到正確的高亮按鈕
-                if (currentUrlTag) {
-                    for(let i=1; i<=3; i++) {
-                        if (localStorage.getItem('acc'+i) === currentUrlTag) {
-                            activeSlot = i.toString();
-                            sessionStorage.setItem('active_slot', activeSlot);
-                            break;
-                        }
+                MY_ACCOUNTS.forEach((acc) => {
+                    let cleanTag = acc.tag.trim().toUpperCase();
+                    if (cleanTag !== '') {
+                        hasAny = true;
+                        let isActive = (currentUrlTag === cleanTag) ? 'active' : '';
+                        let btnName = currentLang === 'zh' ? acc.nameZh : acc.nameEn;
+                        html += `<button class="top-acc-btn ${isActive}" onclick="window.location.href='/?tag=' + encodeURIComponent('${cleanTag}')" title="${cleanTag}">${btnName}</button>`;
                     }
-                }
-
-                for(let i=1; i<=3; i++) {
-                    let tag = localStorage.getItem('acc'+i);
-                    let isActive = (activeSlot === i.toString() && (tag === currentUrlTag || !currentUrlTag)) ? 'active' : '';
-                    let opacity = tag ? '1' : '0.4'; 
-                    let title = tag ? tag : t.empty_slot;
-                    
-                    html += `<button id="btn-acc-${i}" class="top-acc-btn ${isActive}" onclick="handleAccClick(${i})" title="${title}" style="opacity: ${opacity};">${accNames[i-1]}</button>`;
-                }
+                });
                 
-                container.innerHTML = html;
-                container.style.display = 'flex';
+                if (hasAny) {
+                    container.innerHTML = html;
+                    container.style.display = 'flex';
+                } else {
+                    container.style.display = 'none';
+                }
             }
 
             function TL(str) {
@@ -1039,7 +969,7 @@ def pro_dashboard(tag: str = ""):
                         </h2>
                         <div class="brawler-grid">`;
                     
-                    const modeColors = { '搶星大作戰': '#01cfff', '寶石爭奪戰': '#9b3df3', '金庫攻防戰': '#d65cd3', '亂鬥足球': '#8ca0df', '據點搶奪戰': '#e33c50', '極限淘汰賽': '#f7831c' };
+                    const modeColors = { '搶星大作戰': '#01cfff', '寶石爭奪戰': '#9b3df3', '金庫攻防戰': '#d65cd3', '亂鬥足球': '#8ca0df', '据點搶奪戰': '#e33c50', '極限淘汰賽': '#f7831c' };
                     
                     TARGET_SIX_MODES.forEach(modeName => {
                         let totalMatches = 0;
@@ -1067,4 +997,222 @@ def pro_dashboard(tag: str = ""):
                             } else {
                                 let hSes = t.hero_ses.replace('{n}', totalMatches);
                                 mHtml += `<div style="color:#DDD; font-size:14px; margin: 10px 0 8px 0; font-weight:bold;">${hSes}</div>`;
-                                brawlers.sort((a
+                                brawlers.sort((a, b) => b.matches - a.matches || b.wr - a.wr);
+                                brawlers.forEach(b => {
+                                    mHtml += `<div class="b-line-bar"><div class="bar-label"><span class="b-name">🦸 ${b.name}</span><span class="b-data">${(b.wr*100).toFixed(1)}% (${b.w}W-${b.l}L)</span></div><div class="bar-track"><div class="bar-fill win" style="width: ${b.wr*100}%; background-color: ${color};"></div></div></div>`;
+                                });
+                            }
+                        } else {
+                            let valid = brawlers.filter(b => b.matches >= 3);
+                            let topPR = [...valid].sort((a, b) => b.pr - a.pr).slice(0, 3);
+                            let topWR = [...valid].sort((a, b) => b.wr - a.wr || b.matches - a.matches).slice(0, 3);
+                            let trap = [...valid].filter(b => b.wr < 0.45).sort((a, b) => b.matches - a.matches)[0];
+                            let gem = [...valid].filter(b => b.wr >= 0.70 && !topPR.some(b2 => b2.name === b.name)).sort((a, b) => b.wr - a.wr || b.matches - a.matches)[0];
+                            
+                            if (valid.length === 0) {
+                                mHtml += `<div style="color:#777; text-align:center; padding: 30px 0;">${t.req_3}</div>`;
+                            } else {
+                                mHtml += `<div style="color:#DDD; font-size:14px; margin: 10px 0 5px 0;">${t.pr_top}</div>`;
+                                topPR.forEach(b => { mHtml += `<div class="b-line-bar"><div class="bar-label"><span class="b-name">🦸 ${b.name}</span><span class="b-data">${(b.pr*100).toFixed(1)}% (${b.matches}${currentLang==='zh'?'場':''})</span></div><div class="bar-track"><div class="bar-fill" style="width: ${b.pr*100}%; background-color: #888888;"></div></div></div>`; });
+                                
+                                mHtml += `<div style="color:#DDD; font-size:14px; margin: 20px 0 5px 0;">${t.wr_top}</div>`;
+                                topWR.forEach(b => { mHtml += `<div class="b-line-bar"><div class="bar-label"><span class="b-name">🦸 ${b.name}</span><span class="b-data">${(b.wr*100).toFixed(1)}% (${b.w}W-${b.l}L)</span></div><div class="bar-track"><div class="bar-fill win" style="width: ${b.wr*100}%; background-color: ${color};"></div></div></div>`; });
+                                
+                                if (trap || gem) {
+                                    mHtml += `<div style="margin-top: 25px; padding: 12px; background-color: #1A1F24; border-radius: 6px; border-left: 3px solid #2A323C;">`;
+                                    if (trap) mHtml += `<div style="margin-bottom: ${gem ? '12px' : '0'};"><div style="color:#FF5555; font-size:13px; font-weight:bold;">${t.trap}</div><div style="display:flex; justify-content:space-between; margin-top:5px; font-family:Consolas;"><span class="b-name">🦸 ${trap.name}</span><span style="color:#FFF;">${(trap.wr*100).toFixed(1)}% ${t.wr}</span></div></div>`;
+                                    if (gem) mHtml += `<div><div style="color:#00FFAA; font-size:13px; font-weight:bold;">${t.gem}</div><div style="display:flex; justify-content:space-between; margin-top:5px; font-family:Consolas;"><span class="b-name">🦸 ${gem.name}</span><span style="color:#FFF;">${(gem.wr*100).toFixed(1)}% ${t.wr}</span></div></div>`;
+                                    mHtml += `</div>`;
+                                }
+                            }
+                        }
+                        mHtml += `</div>`;
+                        sHtml += mHtml;
+                    });
+                    sHtml += `</div></div>`; 
+                    container.innerHTML += sHtml;
+                });
+            }
+
+            function handleSearch() {
+                const searchInput = document.getElementById('searchInput');
+                if(!searchInput) return;
+                const query = searchInput.value.trim();
+                if (!query) return;
+                
+                const t = i18n[currentLang];
+                const isChinese = /[\\u4e00-\\u9fff]/.test(query);
+                const searchData = appData['current_player']['all_time'];
+                let resultHtml = "";
+                let modalTitle = "";
+                const modalBox = document.getElementById('modal-content-box');
+
+                if (isChinese) {
+                    modalTitle = t.modal_tot;
+                    if (modalBox) modalBox.style.maxWidth = "500px"; 
+                    
+                    resultHtml += `<div class="map-view-grid">`;
+                    const mapCategories = [['🏅', '排位賽'], ['⏳', '一般模式']]; 
+                    mapCategories.forEach(([icon, cat]) => {
+                        let catData = searchData.map_stats.find(c => c.title === cat);
+                        if (catData) {
+                            resultHtml += `<div class="brawler-cat"><h3>${icon} ${TL(cat)} <span style="float:right; color:var(--theme-color); font-family:Consolas;">${catData.wr}</span></h3>`;
+                            resultHtml += createRowHtml(t.cat_tot, {stats: `${catData.wins}W - ${catData.losses}L`, w: catData.w, l: catData.l, d: catData.d}, true);
+                            catData.modes.forEach(m => {
+                                resultHtml += createRowHtml(`• ${TL(m.name)}`, m);
+                            });
+                            resultHtml += `</div>`;
+                        }
+                    });
+                    resultHtml += `</div>`;
+                } else {
+                    if (modalBox) modalBox.style.maxWidth = "500px";
+                    const bName = Object.keys(searchData.brawler_details).find(k => k.includes(query.toUpperCase()));
+                    if (!bName) {
+                        alert(t.modal_not_found.replace('{q}', query));
+                        return;
+                    }
+                    const bStats = searchData.brawler_details[bName];
+                    modalTitle = currentLang === 'zh' ? `【 ${bName} 】(歷史總計)` : `[ ${bName} ] (All-Time)`;
+                    let totalRankedMatches = searchData.summary.ranked.w + searchData.summary.ranked.l + searchData.summary.ranked.d;
+
+                    let sum_title = currentLang === 'zh' ? '▶ 總結' : '▶ Summary';
+                    resultHtml += `<div class="brawler-cat" style="border-left-color:#FFAA00;"><h3>${sum_title} <span style="float:right; color:#FFAA00; font-family:Consolas;">${bStats.summary.split('(')[1].replace(')','')}</span></h3>`;
+                    resultHtml += createRowHtml(t.sum_wl, {stats: bStats.summary.split('(')[0].trim(), w: bStats.w, l: bStats.l, d: bStats.d});
+                    resultHtml += `</div>`;
+                    
+                    bStats.cats.forEach(cat => {
+                        let prText = "";
+                        if (cat.title === '排位賽') {
+                            let catMatches = cat.w + cat.l + cat.d;
+                            let pr = totalRankedMatches > 0 ? ((catMatches / totalRankedMatches) * 100).toFixed(1) : "0.0";
+                            prText = ` <span style="font-size:14px; color:#888;">(${t.pr}: ${pr}%)</span>`;
+                        }
+                        resultHtml += `<div class="brawler-cat"><h3>${cat.icon} ${TL(cat.title)}${prText} <span style="float:right; color:var(--theme-color); font-family:Consolas;">${cat.wr}</span></h3>`;
+                        resultHtml += createRowHtml(t.cat_tot, {stats: `${cat.wins}W - ${cat.losses}L`, w: cat.w, l: cat.l, d: cat.d});
+                        cat.modes.forEach(m => {
+                            resultHtml += createRowHtml(`• ${TL(m.name)}`, m);
+                        });
+                        resultHtml += `</div>`;
+                    });
+                }
+                
+                document.getElementById('modal-title').innerText = modalTitle;
+                document.getElementById('modal-body').innerHTML = resultHtml;
+                document.getElementById('searchModal').style.display = 'flex';
+                document.body.classList.add('no-scroll');
+                searchInput.value = '';
+            }
+
+            function closeModal() {
+                document.getElementById('searchModal').style.display = 'none';
+                document.body.classList.remove('no-scroll');
+            }
+
+            function render() {
+                if (!currentUrlTag) return;
+
+                const data = appData['current_player'];
+                const viewData = data[currentView];
+                const isSession = (currentView === 'session');
+                const t = i18n[currentLang];
+                
+                document.documentElement.style.setProperty('--theme-color', data.color);
+                applyPageState();
+                
+                let displayTitle = data.name ? data.name : currentUrlTag;
+                document.getElementById('track-form').style.display = 'none';
+                document.getElementById('player-name-display').style.display = 'flex';
+                document.getElementById('val-player-name').innerText = displayTitle;
+                
+                ['btn-session', 'btn-all_time', 'btn-disp-data', 'btn-disp-bar'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if(!el) return;
+                    if(id.includes('session')) { el.classList.toggle('active', isSession); el.style.color = isSession ? data.color : '#555555'; }
+                    if(id.includes('all_time')) { el.classList.toggle('active', !isSession); el.style.color = !isSession ? data.color : '#555555'; }
+                    if(id.includes('data')) { el.classList.toggle('active', currentDisplayMode === 'data'); el.style.color = currentDisplayMode === 'data' ? data.color : '#555555'; }
+                    if(id.includes('bar')) { el.classList.toggle('active', currentDisplayMode === 'bar'); el.style.color = currentDisplayMode === 'bar' ? data.color : '#555555'; }
+                });
+
+                const tierStr = data.tier.toUpperCase();
+                let tierColor = data.color; 
+                if (tierStr.includes('BRONZE')) tierColor = '#CD7F32';      
+                else if (tierStr.includes('SILVER')) tierColor = '#B4C5E4'; 
+                else if (tierStr.includes('GOLD')) tierColor = '#FFD700';   
+                else if (tierStr.includes('DIAMOND')) tierColor = '#11C4EB';
+                else if (tierStr.includes('MYTHIC')) tierColor = '#DF44FF'; 
+                else if (tierStr.includes('LEGENDARY')) tierColor = '#FF3333'; 
+                else if (tierStr.includes('MASTER')) tierColor = '#FF8800'; 
+                
+                let eloDisplay = data.elo === '0' ? '-' : data.elo;
+                let trophyDisplay = data.trophies === 0 ? '-' : data.trophies;
+                let v3v3Display = data.victories_3v3 === 0 ? '-' : data.victories_3v3;
+                let tierDisplay = data.tier === "UNKNOWN" ? '-' : data.tier;
+
+                document.getElementById('val-trophies').innerHTML = `${trophyDisplay} <span class="diff">(${data.diff_trophies})</span>`;
+                document.getElementById('val-3v3').innerText = v3v3Display;
+                
+                const eloDiffStr = data.diff_elo || '+0';
+                document.getElementById('val-elo').innerHTML = `${eloDisplay} <span class="diff">(${eloDiffStr})</span>`;
+                document.getElementById('val-elo-rk').innerHTML = `${eloDisplay} <span class="diff">(${eloDiffStr})</span>`;
+                
+                const tierElem = document.getElementById('val-tier');
+                tierElem.innerText = tierDisplay;
+                tierElem.style.color = tierColor;
+                tierElem.style.textShadow = `0 0 15px ${tierColor}90`;
+                
+                const tierElemRk = document.getElementById('val-tier-rk');
+                tierElemRk.innerText = tierDisplay;
+                tierElemRk.style.color = tierColor;
+                tierElemRk.style.textShadow = `0 0 15px ${tierColor}90`;
+                
+                document.getElementById('summary-section').innerHTML = `
+                    ${createRowHtml(TL('🏅 排位賽'), viewData.summary.ranked, true)}
+                    ${createRowHtml(TL('⏳ 一般模式'), viewData.summary.casual, true)}
+                    ${createRowHtml(TL('🎪 特別活動'), viewData.summary.special, true)}
+                    ${createRowHtml(TL('📊 總戰績'), viewData.summary.total, true, true)}
+                `;
+                
+                const rkLabel = isSession ? t.rk_ses : t.rk_all;
+                document.getElementById('summary-ranked-only').innerHTML = createRowHtml(rkLabel, viewData.summary.ranked, true);
+
+                const grid = document.getElementById('brawler-grid');
+                grid.innerHTML = '';
+                viewData.brawlers.forEach(cat => {
+                    let catHtml = `<div class="brawler-cat"><h3>${cat.icon} ${TL(cat.title)}</h3>`;
+                    cat.items.forEach(b => {
+                        catHtml += createRowHtml(`🦸 ${b.name}`, b);
+                    });
+                    catHtml += `</div>`;
+                    grid.innerHTML += catHtml;
+                });
+                
+                renderRankedPage(data);
+            }
+
+            function switchView(view) { currentView = view; sessionStorage.setItem('currentView', view); render(); }
+            function setDisplayMode(mode) { currentDisplayMode = mode; localStorage.setItem('displayMode', mode); render(); }
+            function setAlignment(align) {
+                currentAlign = align; localStorage.setItem('pageAlign', align);
+                document.body.style.justifyContent = align;
+                document.getElementById('btn-align-left').classList.toggle('active', align === 'flex-start');
+                document.getElementById('btn-align-center').classList.toggle('active', align === 'center');
+                document.getElementById('btn-align-right').classList.toggle('active', align === 'flex-end');
+            }
+
+            setLang(currentLang);
+            setAlignment(currentAlign);
+        </script>
+    </body>
+    </html>
+    """
+    
+    final_html = html_template.replace('__APP_DATA_HERE__', js_string)
+    final_html = final_html.replace('__CURRENT_TAG__', tag)
+    final_html = final_html.replace('__DASHBOARD_DISPLAY_NAV__', dashboard_display_nav)
+    final_html = final_html.replace('__DASHBOARD_DISPLAY__', dashboard_display)
+    final_html = final_html.replace('__DASHBOARD_DISPLAY_SEARCH__', dashboard_display_search)
+    final_html = final_html.replace('__WELCOME_DISPLAY__', welcome_display)
+    final_html = final_html.replace('__REFRESH_TEXT__', refresh_status_text)
+
+    return HTMLResponse(content=final_html)
