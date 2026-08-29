@@ -463,7 +463,6 @@ def pro_dashboard(tag: str = ""):
             .nav-btn:hover { background-color: #2A323C; color: #FFFFFF !important; }
             .nav-btn.active { background-color: #2A323C; color: var(--theme-color); }
             
-            /* ✨ 加粗、更明顯的橫向滾動條 */
             .top-acc-container { display: flex; gap: 6px; background-color: #121212; padding: 4px 4px 6px 4px; border-radius: 10px; border: 1px solid #2A323C; align-items: center; max-width: 330px; overflow-x: auto; white-space: nowrap; scroll-behavior: smooth; }
             .top-acc-container::-webkit-scrollbar { height: 8px; }
             .top-acc-container::-webkit-scrollbar-track { background: #1A1F24; border-radius: 4px; }
@@ -486,8 +485,12 @@ def pro_dashboard(tag: str = ""):
             .acc-menu-item.active { border-left: 4px solid var(--theme-color); background-color: rgba(0,255,170,0.05); color: var(--theme-color); padding-left: 12px; }
             .acc-menu-name { font-weight: bold; color: #FFFFFF; font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 14px; }
 
+            /* ✨ DC & YT 按鈕美化設計 */
             .yt-link { display: flex; align-items: center; gap: 8px; background-color: #1A1F24; border: 1px solid #2A323C; padding: 6px 14px; border-radius: 20px; color: #DDDDDD; text-decoration: none; font-family: 'Segoe UI', Tahoma, sans-serif; font-weight: bold; font-size: 14px; transition: all 0.3s ease; pointer-events: auto; }
             .yt-link:hover { background-color: #2A323C; color: #FFFFFF; border-color: #FF0000; box-shadow: 0 0 12px rgba(255, 0, 0, 0.4); transform: translateY(-1px); }
+
+            .dc-link { display: flex; align-items: center; gap: 8px; background-color: #1A1F24; border: 1px solid #2A323C; padding: 6px 14px; border-radius: 20px; color: #DDDDDD; text-decoration: none; font-family: 'Segoe UI', Tahoma, sans-serif; font-weight: bold; font-size: 14px; transition: all 0.3s ease; pointer-events: auto; }
+            .dc-link:hover { background-color: #2A323C; color: #FFFFFF; border-color: #5865F2; box-shadow: 0 0 12px rgba(88, 101, 242, 0.4); transform: translateY(-1px); }
 
             .lang-select-container { display: flex; align-items: center; }
             .lang-select { background-color: #1A1F24; color: #AAAAAA; padding: 6px 12px; font-size: 14px; border: 1px solid #2A323C; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Segoe UI', Tahoma, sans-serif; outline: none; transition: 0.3s; pointer-events: auto; }
@@ -584,12 +587,20 @@ def pro_dashboard(tag: str = ""):
             </div>
             
             <div style="width: 100%; max-width: 980px; margin: 0 auto; display: flex; justify-content: space-between; padding: 0 40px; box-sizing: border-box; pointer-events: none; z-index: 5;">
-                <div style="pointer-events: auto;">
+                
+                <!-- ✨ YT 與 DC 連結：採用 Flex 排列，間距適中 -->
+                <div style="pointer-events: auto; display: flex; gap: 10px;">
                     <a href="http://www.youtube.com/@Jacky%E9%99%B3%E7%9A%AE" target="_blank" class="yt-link" title="前往 Jacky陳皮 的 YouTube 頻道">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="#FF0000">
                             <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                         </svg>
                         <span>YT: Jacky陳皮</span>
+                    </a>
+                    <a href="https://discord.gg/pSkxs2xtku" target="_blank" class="dc-link" title="加入 Jacky陳皮 的 Discord 伺服器">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 127.14 96.36" width="18" height="18" fill="#5865F2">
+                            <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
+                        </svg>
+                        <span>DC: Jacky陳皮</span>
                     </a>
                 </div>
 
@@ -820,7 +831,7 @@ def pro_dashboard(tag: str = ""):
                     welcome_t: 'Brawl Tactics에 오신 것을 환영합니다',
                     welcome_d: '강력한 브롤스타즈 e스포츠 데이터 분석 시스템입니다.<br>플레이어 태그(# 포함)를 입력하여 전적을 확인하세요.',
                     trophies: '🏆 트로피', v3v3: '⚔️ 3V3 승리', elo: '🎯 랭크 Elo', tier: '⭐ 랭크',
-                    footer: 'Powered 단 Cloud Environment',
+                    footer: 'Powered by Render Cloud Environment',
                     btn_ranked: '▶ 랭크전으로 전환', btn_main: '◀ 전체 전적',
                     btn_ses: '▶ 이번 세션', btn_all: '▶ 전체 기록',
                     m_bounty: '바운티', m_gem: '젬 그랩', m_heist: '하이스트', m_ball: '브롤 볼', m_hot: '핫 존', m_knock: '녹아웃',
@@ -1075,7 +1086,7 @@ def pro_dashboard(tag: str = ""):
                 if (!container) return;
                 
                 let html = "";
-                let activeSlot = sessionStorage.getItem('active_slot') || '1';
+                let activeSlot = sessionStorage.getItem('active_slot');
                 const t = i18n[currentLang];
 
                 if (currentUrlTag) {
