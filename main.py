@@ -344,6 +344,7 @@ def pro_dashboard(tag: str = ""):
     if not supabase:
         return HTMLResponse("<h1>資料庫連線失敗，請檢查環境變數。</h1>")
 
+    # 完全匿名化處理，無任何硬編碼標籤
     tag = tag.strip().upper()
     if tag and not tag.startswith("#"):
         tag = "#" + tag
@@ -467,8 +468,8 @@ def pro_dashboard(tag: str = ""):
             .top-acc-btn { background: transparent; border: none; border-right: 1px solid #2A323C; color: #AAAAAA; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.2s; font-family: 'Consolas', monospace; height: 100%; pointer-events: auto; }
             .top-acc-btn:last-child { border-right: none; }
             .top-acc-btn:hover:not(.active) { background: #2A323C; color: #FFFFFF; }
-            .top-acc-btn.active { background: var(--theme-color); color: #121212; opacity: 1 !important; }
-            
+            .top-acc-btn.active { background: var(--theme-color); color: #121212; }
+
             .yt-link {
                 display: flex;
                 align-items: center;
@@ -582,20 +583,21 @@ def pro_dashboard(tag: str = ""):
                 </a>
             </div>
             
-            <div style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; justify-content: center; pointer-events: none; z-index: 5;">
-                <div style="width: 100%; max-width: 900px; padding: 0 40px; box-sizing: content-box; display: flex; align-items: center;">
-                    <a href="http://www.youtube.com/@Jacky%E9%99%B3%E7%9A%AE" target="_blank" class="yt-link" title="前往 Jacky陳皮 的 YouTube 頻道">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="#FF0000">
-                            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                        </svg>
-                        <span>YT: Jacky陳皮</span>
-                    </a>
-                </div>
+            <!-- ✨ 完美對齊：透過 CSS 算式讓 YT 剛好貼齊下方黑底的左側 -->
+            <div style="position: absolute; left: max(5vw, calc(50vw - 450px)); top: 0; bottom: 0; display: flex; align-items: center; pointer-events: none; z-index: 5;">
+                <a href="http://www.youtube.com/@Jacky%E9%99%B3%E7%9A%AE" target="_blank" class="yt-link" title="前往 Jacky陳皮 的 YouTube 頻道" style="margin-left: 40px;"> <!-- 40px 剛好抵銷下方 container 的 padding -->
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="#FF0000">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    </svg>
+                    <span>YT: Jacky陳皮</span>
+                </a>
             </div>
 
-            <div style="position: absolute; right: 5vw; top: 0; bottom: 0; display: flex; align-items: center; gap: 20px; z-index: 10; pointer-events: auto;">
-                <!-- 帳號切換常駐顯示，讓切換不再繁瑣 -->
-                <div id="top-acc-container" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px;"></div>
+            <!-- ✨ 完美對齊：透過 CSS 算式讓帳號區塊剛好貼齊下方黑底的右側 -->
+            <div style="position: absolute; right: max(5vw, calc(50vw - 450px)); top: 0; bottom: 0; display: flex; align-items: center; gap: 20px; z-index: 10; pointer-events: auto; padding-right: 40px;">
+                <div id="top-acc-container" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px;">
+                    <!-- JS 動態生成 -->
+                </div>
 
                 <div class="lang-switch" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px; pointer-events: auto;">
                     <button id="lang-zh" onclick="setLang('zh')" style="background: var(--theme-color); color: #121212; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">繁</button>
@@ -744,12 +746,9 @@ def pro_dashboard(tag: str = ""):
                     trap: '⚠️ 版本陷阱 (頭鐵掉分機)', gem: '💎 潛力神角 (上分奇兵)', wr: '勝率',
                     modal_tot: '【 全模式地圖勝率 (歷史總計) 】', modal_not_found: '資料庫中找不到包含【{q}】的英雄紀錄。',
                     cat_tot: '分類總計', sum_wl: '總勝負', pr: '出場率',
-                    acc1: '一帳', acc2: '二帳', acc3: '三帳',
-                    bind_lbl: '綁定 {n} 標籤：', bind_title: '請綁定您的 {n}', bind_desc: '請在上方輸入框填寫玩家標籤，以完成綁定。',
+                    acc1: 'Main', acc2: 'Alt 1', acc3: 'Alt 2',
                     clear_cache: '[ 🗑️ 清除本機綁定紀錄 ]',
-                    current_player_lbl: '當前玩家：', btn_reenter: '重新輸入',
-                    enter_tag_prompt: '請輸入【{n}】的玩家標籤 (包含 #)：',
-                    click_to_bind: '點擊以綁定'
+                    current_player_lbl: '當前玩家：', btn_reenter: '重新輸入'
                 },
                 'en': {
                     tag_lbl: 'Player Tag:', track: 'Track', search_ph: '🔍 Search Brawler / Map', search_btn: 'Search',
@@ -770,27 +769,45 @@ def pro_dashboard(tag: str = ""):
                     modal_tot: '【 Win Rate by Mode/Map (All-Time) 】', modal_not_found: 'No records found for brawler containing "{q}".',
                     cat_tot: 'Category Total', sum_wl: 'Total W/L', pr: 'Pick Rate',
                     acc1: 'Main', acc2: 'Alt 1', acc3: 'Alt 2',
-                    bind_lbl: 'Bind {n} Tag:', bind_title: 'Bind your {n}', bind_desc: 'Enter your player tag in the input box above to bind.',
                     clear_cache: '[ 🗑️ Clear Local Data ]',
-                    current_player_lbl: 'Current Player:', btn_reenter: 'Change Tag',
-                    enter_tag_prompt: 'Enter player tag for 【{n}】 (including #):',
-                    click_to_bind: 'Click to bind'
+                    current_player_lbl: 'Current Player:', btn_reenter: 'Change Tag'
                 }
             };
 
+            // ✨ 直覺化綁定：點擊任何按鈕，自動綁定當前畫面戰績
             function handleAccClick(slot) {
-                let tag = localStorage.getItem('acc' + slot);
-                if (tag) {
-                    if (currentUrlTag !== tag) {
-                        window.location.href = '/?tag=' + encodeURIComponent(tag);
+                let savedTag = localStorage.getItem('acc' + slot);
+                if (savedTag) {
+                    // 已綁定，切換帳號
+                    if (currentUrlTag !== savedTag) {
+                        window.location.href = '/?tag=' + encodeURIComponent(savedTag);
                     }
                 } else {
-                    let newTag = prompt(i18n[currentLang].enter_tag_prompt.replace('{n}', i18n[currentLang]['acc'+slot]));
-                    if (newTag) {
-                        newTag = newTag.trim().toUpperCase();
-                        if (!newTag.startsWith('#')) newTag = '#' + newTag;
-                        localStorage.setItem('acc' + slot, newTag);
-                        window.location.href = '/?tag=' + encodeURIComponent(newTag);
+                    // 未綁定
+                    if (currentUrlTag) {
+                        // 正在看戰績，直接綁定給它！
+                        localStorage.setItem('acc' + slot, currentUrlTag);
+                        
+                        let btn = document.getElementById('btn-acc-' + slot);
+                        if(btn) {
+                            let originalText = btn.innerText;
+                            btn.innerText = '✔️';
+                            btn.style.color = 'var(--theme-color)';
+                            setTimeout(() => { renderTopAccButtons(); }, 1000);
+                        }
+                    } else {
+                        // 如果在首頁亂點空按鈕，閃爍輸入框提醒他
+                        let inputEl = document.getElementById('input-tag');
+                        if (inputEl) {
+                            inputEl.focus();
+                            inputEl.style.transition = 'all 0.3s';
+                            inputEl.style.borderColor = 'var(--theme-color)';
+                            inputEl.style.boxShadow = '0 0 15px var(--theme-color)';
+                            setTimeout(() => {
+                                inputEl.style.boxShadow = 'none';
+                                inputEl.style.borderColor = '#2A323C';
+                            }, 800);
+                        }
                     }
                 }
             }
@@ -803,7 +820,7 @@ def pro_dashboard(tag: str = ""):
                 if (!tag) return;
                 if (!tag.startsWith('#')) tag = '#' + tag;
                 
-                // 如果一二三帳皆空，搜尋時自動綁定一帳
+                // 自動記憶到第一個空位
                 if (!localStorage.getItem('acc1') && !localStorage.getItem('acc2') && !localStorage.getItem('acc3')) {
                     localStorage.setItem('acc1', tag);
                 }
@@ -884,6 +901,7 @@ def pro_dashboard(tag: str = ""):
                 renderTopAccButtons();
             }
 
+            // ✨ 三按鈕常駐顯示，空狀態時變暗
             function renderTopAccButtons() {
                 const container = document.getElementById('top-acc-container');
                 if (!container) return;
@@ -895,8 +913,8 @@ def pro_dashboard(tag: str = ""):
                 for(let i=0; i<3; i++) {
                     let tag = localStorage.getItem('acc'+(i+1));
                     let isActive = (currentUrlTag && currentUrlTag === tag) ? 'active' : '';
-                    let opacity = tag ? '1' : '0.6';
-                    let title = tag ? tag : t.click_to_bind;
+                    let opacity = tag ? '1' : '0.4'; // 沒設定時變暗
+                    let title = tag ? tag : "點擊綁定當前畫面玩家";
                     
                     html += `<button id="btn-acc-${i+1}" class="top-acc-btn ${isActive}" onclick="handleAccClick(${i+1})" title="${title}" style="opacity: ${opacity};">${accNames[i]}</button>`;
                 }
@@ -1154,7 +1172,7 @@ def pro_dashboard(tag: str = ""):
                 document.documentElement.style.setProperty('--theme-color', data.color);
                 applyPageState();
                 
-                // ✨ 動態顯示玩家名稱，如果 API 失敗沒抓到名字，就 fallback 顯示標籤！
+                // ✨ 修正：拔除 API 失敗卡死機制，永遠都會顯示名字或代碼
                 let displayTitle = data.name ? data.name : currentUrlTag;
                 document.getElementById('track-form').style.display = 'none';
                 document.getElementById('player-name-display').style.display = 'flex';
