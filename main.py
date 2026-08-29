@@ -593,8 +593,7 @@ def pro_dashboard(tag: str = ""):
 
             <div style="position: absolute; right: max(5vw, calc(50vw - 450px)); top: 0; bottom: 0; display: flex; align-items: center; gap: 20px; z-index: 10; pointer-events: auto; padding-right: 40px;">
                 <div id="top-acc-container" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px;">
-                    <!-- JS 動態生成 -->
-                </div>
+                    </div>
 
                 <div class="lang-switch" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px; pointer-events: auto;">
                     <button id="lang-zh" onclick="setLang('zh')" style="background: var(--theme-color); color: #121212; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">繁</button>
@@ -631,10 +630,9 @@ def pro_dashboard(tag: str = ""):
             <div class="header">
                 <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;">
                     
-                    <!-- 原生表單，回歸最單純的查詢功能 -->
-                    <form action="/" method="GET" id="track-form" style="display:flex; align-items:center; gap: 10px; margin:0;">
+                    <form id="track-form" onsubmit="handleTrackSubmit(event)" style="display:flex; align-items:center; gap: 10px; margin:0;">
                         <span id="lbl-tag" style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3); display: inline-block;">請輸入玩家標籤：</span>
-                        <input type="text" name="tag" value="__CURRENT_TAG__" id="input-tag" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
+                        <input type="text" id="input-tag" value="__CURRENT_TAG__" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
                         <button type="submit" id="btn-track" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 0; width: 80px; text-align: center; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s; white-space:nowrap;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
                     </form>
 
@@ -688,6 +686,9 @@ def pro_dashboard(tag: str = ""):
             <div class="footer">
                 <span id="footer-cloud">系統運作於 Render 雲端環境</span> <br>
                 <span id="refresh-status" style="color:var(--theme-color);">__REFRESH_TEXT__</span>
+                <div style="margin-top: 15px;">
+                    <a href="javascript:void(0);" onclick="localStorage.clear(); sessionStorage.clear(); window.location.href='/';" id="btn-clear-cache" style="color: #555; text-decoration: none; font-size: 12px; transition: color 0.3s;" onmouseover="this.style.color='#FF5555'" onmouseout="this.style.color='#555'">[ 🗑️ 清除本機綁定紀錄 ]</a>
+                </div>
             </div>
         </div>
 
@@ -702,14 +703,6 @@ def pro_dashboard(tag: str = ""):
         </div>
 
         <script>
-            // ⚙️ 帳號設定區：在這裡填入你的標籤！
-            // 只要填寫了標籤，按鈕就會自動出現。如果留空 (例如 '')，該按鈕就會自動隱藏。
-            const MY_ACCOUNTS = [
-                { nameZh: 'Main', nameEn: 'Main', tag: '#9P2GP0UL9' }, // 請替換為你的一帳標籤
-                { nameZh: 'Alt 1', nameEn: 'Alt 1', tag: '#2QGP2L0VP' }, // 請替換為你的二帳標籤
-                { nameZh: 'Alt 2', nameEn: 'Alt 2', tag: '' }          // 留空代表暫時不顯示三帳按鈕
-            ];
-
             let appData = __APP_DATA_HERE__;
             window.appData = appData;
             
@@ -749,7 +742,11 @@ def pro_dashboard(tag: str = ""):
                     trap: '⚠️ 版本陷阱 (頭鐵掉分機)', gem: '💎 潛力神角 (上分奇兵)', wr: '勝率',
                     modal_tot: '【 全模式地圖勝率 (歷史總計) 】', modal_not_found: '資料庫中找不到包含【{q}】的英雄紀錄。',
                     cat_tot: '分類總計', sum_wl: '總勝負', pr: '出場率',
-                    current_player_lbl: '當前玩家：', btn_reenter: '重新輸入'
+                    acc1: '一帳', acc2: '二帳', acc3: '三帳',
+                    bind_prompt: '請輸入【{n}】的標籤：',
+                    clear_cache: '[ 🗑️ 清除本機綁定紀錄 ]',
+                    current_player_lbl: '當前玩家：', btn_reenter: '重新輸入',
+                    empty_slot: '空欄位 (點擊以查詢新帳號)'
                 },
                 'en': {
                     tag_lbl: 'Player Tag:', track: 'Track', search_ph: '🔍 Search Brawler / Map', search_btn: 'Search',
@@ -769,14 +766,80 @@ def pro_dashboard(tag: str = ""):
                     trap: '⚠️ Meta Trap (Trophy Drain)', gem: '💎 Hidden Gem (Trophy Pusher)', wr: 'Win Rate',
                     modal_tot: '【 Win Rate by Mode/Map (All-Time) 】', modal_not_found: 'No records found for brawler containing "{q}".',
                     cat_tot: 'Category Total', sum_wl: 'Total W/L', pr: 'Pick Rate',
-                    current_player_lbl: 'Current Player:', btn_reenter: 'Change Tag'
+                    acc1: 'Main', acc2: 'Alt 1', acc3: 'Alt 2',
+                    bind_prompt: 'Enter tag for {n}:',
+                    clear_cache: '[ 🗑️ Clear Local Data ]',
+                    current_player_lbl: 'Current Player:', btn_reenter: 'Change Tag',
+                    empty_slot: 'Empty Slot (Click to track new account)'
                 }
             };
+
+            // ✨ 完美頁籤系統：點擊按鈕切換
+            function handleAccClick(slot) {
+                sessionStorage.setItem('active_slot', slot); // 記住使用者點擊的是哪個槽位
+                let tag = localStorage.getItem('acc' + slot);
+                
+                if (tag) {
+                    // 如果該槽位已經有綁定標籤，切換過去
+                    if (currentUrlTag !== tag) {
+                        window.location.href = '/?tag=' + encodeURIComponent(tag);
+                    }
+                } else {
+                    // 槽位是空的：如果是正在看某人戰績，瞬間綁定它！
+                    if (currentUrlTag) {
+                        localStorage.setItem('acc' + slot, currentUrlTag);
+                        let btn = document.getElementById('btn-acc-' + slot);
+                        if(btn) {
+                            let originalText = btn.innerText;
+                            btn.innerText = '✔️';
+                            btn.style.color = 'var(--theme-color)';
+                            setTimeout(() => { renderTopAccButtons(); }, 1000);
+                        }
+                    } else {
+                        // 槽位是空的，且人在首頁：提示輸入框亮起，改變提示文字
+                        applyLangText();
+                        let inputEl = document.getElementById('input-tag');
+                        if (inputEl) {
+                            inputEl.focus();
+                            inputEl.style.transition = 'all 0.3s';
+                            inputEl.style.borderColor = 'var(--theme-color)';
+                            inputEl.style.boxShadow = '0 0 15px var(--theme-color)';
+                            setTimeout(() => {
+                                inputEl.style.boxShadow = 'none';
+                                inputEl.style.borderColor = '#2A323C';
+                            }, 800);
+                        }
+                    }
+                }
+            }
+
+            // 攔截輸入，將標籤存入當前活躍的槽位
+            function handleTrackSubmit(event) {
+                event.preventDefault();
+                let inputEl = document.getElementById('input-tag');
+                if(!inputEl) return;
+                let tag = inputEl.value.trim().toUpperCase();
+                if (!tag) return;
+                if (!tag.startsWith('#')) tag = '#' + tag;
+
+                let slot = sessionStorage.getItem('active_slot') || '1'; // 預設存入一帳
+                localStorage.setItem('acc' + slot, tag);
+                
+                window.location.href = '/?tag=' + encodeURIComponent(tag);
+            }
             
             function showInputForm() {
                 document.getElementById('track-form').style.display = 'flex';
                 document.getElementById('player-name-display').style.display = 'none';
+                
+                // 點擊重新輸入時，清空當前槽位的紀錄
+                let slot = sessionStorage.getItem('active_slot') || '1';
+                localStorage.removeItem('acc' + slot);
+                
+                document.getElementById('input-tag').value = '';
                 document.getElementById('input-tag').focus();
+                
+                renderTopAccButtons(); // 更新上方按鈕為變暗狀態
             }
 
             function setLang(lang) {
@@ -798,7 +861,18 @@ def pro_dashboard(tag: str = ""):
             function applyLangText() {
                 const t = i18n[currentLang];
                 
-                let lblTag = document.getElementById('lbl-tag'); if(lblTag) lblTag.innerText = t.tag_lbl;
+                // 動態判斷輸入框的標題文字
+                let activeSlot = sessionStorage.getItem('active_slot') || '1';
+                let accName = t['acc' + activeSlot];
+                let lblTag = document.getElementById('lbl-tag'); 
+                
+                if (window.location.pathname === '/' && !currentUrlTag && sessionStorage.getItem('active_slot')) {
+                    // 如果在首頁，且點擊了空槽位，提示文字改變
+                    if(lblTag) lblTag.innerText = t.bind_prompt.replace('{n}', accName);
+                } else {
+                    if(lblTag) lblTag.innerText = t.tag_lbl;
+                }
+                
                 let wTitle = document.getElementById('welcome-title'); if(wTitle) wTitle.innerText = t.welcome_t;
                 let wDesc = document.getElementById('welcome-desc'); if(wDesc) wDesc.innerHTML = t.welcome_d;
                 
@@ -814,6 +888,8 @@ def pro_dashboard(tag: str = ""):
                 if(sBtn) sBtn.innerText = t.search_btn;
                 
                 document.getElementById('footer-cloud').innerHTML = t.footer;
+                const btnClear = document.getElementById('btn-clear-cache');
+                if (btnClear) btnClear.innerText = t.clear_cache;
                 
                 const bpt = document.getElementById('btn-page-toggle');
                 if (bpt) bpt.innerText = activePage === 'main' ? t.btn_ranked : t.btn_main;
@@ -844,31 +920,40 @@ def pro_dashboard(tag: str = ""):
                 renderTopAccButtons();
             }
 
-            // ✨ 根據 MY_ACCOUNTS 自動生成常駐按鈕 (完全寫死，絕不自爆，沒填的空著)
+            // ✨ 三個按鈕永遠常駐顯示
             function renderTopAccButtons() {
                 const container = document.getElementById('top-acc-container');
                 if (!container) return;
                 
+                const t = i18n[currentLang];
+                const accNames = [t.acc1, t.acc2, t.acc3];
                 let html = "";
-                let hasAny = false;
                 
-                MY_ACCOUNTS.forEach((acc) => {
-                    let cleanTag = acc.tag.trim().toUpperCase();
-                    // 只要標籤不是空的，就顯示該按鈕！
-                    if (cleanTag !== '') {
-                        hasAny = true;
-                        let isActive = (currentUrlTag === cleanTag) ? 'active' : '';
-                        let btnName = currentLang === 'zh' ? acc.nameZh : acc.nameEn;
-                        html += `<button class="top-acc-btn ${isActive}" onclick="window.location.href='/?tag=' + encodeURIComponent('${cleanTag}')" title="${cleanTag}">${btnName}</button>`;
+                let activeSlot = sessionStorage.getItem('active_slot') || '1';
+
+                // 為了確保萬一用戶直接輸入網址，我們嘗試把 tag 對應到正確的高亮按鈕
+                if (currentUrlTag) {
+                    for(let i=1; i<=3; i++) {
+                        if (localStorage.getItem('acc'+i) === currentUrlTag) {
+                            activeSlot = i.toString();
+                            sessionStorage.setItem('active_slot', activeSlot);
+                            break;
+                        }
                     }
-                });
-                
-                if (hasAny) {
-                    container.innerHTML = html;
-                    container.style.display = 'flex';
-                } else {
-                    container.style.display = 'none';
                 }
+
+                for(let i=1; i<=3; i++) {
+                    let tag = localStorage.getItem('acc'+i);
+                    let isActive = (activeSlot === i.toString()) ? 'active' : '';
+                    let opacity = tag ? '1' : '0.4'; // 如果還沒綁定，按鈕顯示稍微變暗
+                    let title = tag ? tag : t.empty_slot;
+                    let btnName = accNames[i-1];
+                    
+                    html += `<button id="btn-acc-${i}" class="top-acc-btn ${isActive}" onclick="handleAccClick(${i})" title="${title}" style="opacity: ${opacity};">${btnName}</button>`;
+                }
+                
+                container.innerHTML = html;
+                container.style.display = 'flex';
             }
 
             function TL(str) {
@@ -1121,7 +1206,7 @@ def pro_dashboard(tag: str = ""):
                 document.documentElement.style.setProperty('--theme-color', data.color);
                 applyPageState();
                 
-                // ✨ 修正：拔除 API 失敗卡死機制，永遠都會顯示名字或標籤，不再退化成 -
+                // ✨ 動態顯示玩家名稱，如果 API 失敗沒抓到名字，就 fallback 顯示標籤！
                 let displayTitle = data.name ? data.name : currentUrlTag;
                 document.getElementById('track-form').style.display = 'none';
                 document.getElementById('player-name-display').style.display = 'flex';
