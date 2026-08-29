@@ -461,10 +461,14 @@ def pro_dashboard(tag: str = ""):
             .nav-btn:hover { background-color: #2A323C; color: #FFFFFF !important; }
             .nav-btn.active { background-color: #2A323C; }
             
-            /* 新增的帳號快速切換按鈕 CSS */
-            .acc-btn { background: transparent; color: #AAAAAA; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s; font-family: 'Consolas', monospace; height: 100%; }
-            .acc-btn:hover { color: #FFFFFF; background: #2A323C; }
-            .acc-btn.active { background: var(--theme-color); color: #121212; }
+            /* 新增的帳號管理按鈕 CSS */
+            .top-acc-btn { background: transparent; border: none; border-right: 1px solid #2A323C; color: #AAAAAA; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.2s; font-family: 'Consolas', monospace; height: 100%; }
+            .top-acc-btn:last-child { border-right: none; }
+            .top-acc-btn:hover:not(.active) { background: #2A323C; color: #FFFFFF; }
+            .top-acc-btn.active { background: var(--theme-color); color: #121212; }
+            
+            .bind-btn { background: #121212; border: 1px solid #2A323C; color: #AAAAAA; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: 'Consolas', monospace; transition: 0.2s; font-weight: bold; }
+            .bind-btn:hover { border-color: var(--theme-color); color: var(--theme-color); }
 
             .search-box { display: flex; gap: 10px; }
             .search-box input { background-color: #121212; border: 1px solid #2A323C; color: var(--theme-color); border-radius: 8px; font-family: 'Consolas', monospace; font-size: 16px; outline: none; transition: border-color 0.3s; box-sizing: border-box; }
@@ -472,7 +476,7 @@ def pro_dashboard(tag: str = ""):
             .search-box button { background-color: #1A1F24; border: 1px solid #2A323C; color: #FFFFFF; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-family: 'Consolas', monospace; font-weight: bold; box-sizing: border-box; }
             .search-box button:hover { background-color: var(--theme-color); color: #121212; }
 
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--theme-color); padding-bottom: 20px; margin-bottom: 30px; transition: border-color 0.3s; flex-wrap: nowrap; overflow: hidden; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid var(--theme-color); padding-bottom: 20px; margin-bottom: 30px; transition: border-color 0.3s; flex-wrap: nowrap; overflow: hidden; }
             
             .top-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
             .stat-box { background-color: #121212; border-radius: 12px; padding: 20px; text-align: center; border-left: 4px solid var(--theme-color); transition: border-color 0.3s; }
@@ -552,13 +556,10 @@ def pro_dashboard(tag: str = ""):
                 </span>
             </a>
             
-            <!-- ✨ 新增：快速切換三帳號功能與雙語開關並排 -->
+            <!-- 右側選單 (包含動態載入的帳號捷徑區塊與語言切換) -->
             <div style="display: flex; align-items: center; gap: 20px;">
-                <div class="account-switch" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px;">
-                    <button id="btn-acc-1" onclick="switchMainAcc('#9P2GP0UL9')" class="acc-btn">一帳</button>
-                    <button id="btn-acc-2" onclick="switchMainAcc('#2QGP2L0VP')" class="acc-btn">二帳</button>
-                    <!-- 你可以將下方的 #XXXXXXX 替換成你真正的第三個帳號標籤 -->
-                    <button id="btn-acc-3" onclick="switchMainAcc('#XXXXXXX')" class="acc-btn">三帳</button>
+                <div id="top-acc-container" style="display: none; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px;">
+                    <!-- JS 根據 Local Storage 動態生成一二三帳按鈕 -->
                 </div>
 
                 <div class="lang-switch" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px;">
@@ -593,16 +594,26 @@ def pro_dashboard(tag: str = ""):
                 </div>
             </div>
 
+            <!-- 標籤與搜尋列完美對齊 -->
             <div class="header">
-                <div style="flex: 1; display: flex; justify-content: flex-start; align-items: center;">
+                <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;">
                     <form action="/" method="GET" style="display:flex; align-items:center; gap: 10px; margin:0;">
-                        <span id="lbl-tag" style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3); display: inline-block;">請輸入玩家標籤：</span>
+                        <!-- 解放左側對齊，讓畫面邊界完美筆直 -->
+                        <span id="lbl-tag" style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3);">請輸入玩家標籤：</span>
                         <input type="text" name="tag" value="__CURRENT_TAG__" id="input-tag" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
                         <button type="submit" id="btn-track" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 0; width: 80px; text-align: center; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s; white-space:nowrap;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
                     </form>
+                    
+                    <!-- ✨ 匿名化本地儲存捷徑按鈕 (有搜尋資料時才會出現) -->
+                    <div style="display: __DASHBOARD_DISPLAY_NAV__; align-items: center; gap: 8px; margin-top: 12px; padding-left: 2px;">
+                        <span id="lbl-save-acc" style="color: #777; font-size: 14px; font-family: 'Consolas', monospace;">將此標籤設為快捷：</span>
+                        <button type="button" class="bind-btn" id="btn-bind-1" onclick="bindAcc(1)">一帳</button>
+                        <button type="button" class="bind-btn" id="btn-bind-2" onclick="bindAcc(2)">二帳</button>
+                        <button type="button" class="bind-btn" id="btn-bind-3" onclick="bindAcc(3)">三帳</button>
+                    </div>
                 </div>
                 
-                <div style="display: __DASHBOARD_DISPLAY_SEARCH__; align-items: center;">
+                <div style="flex: 1; display: __DASHBOARD_DISPLAY_SEARCH__; justify-content: flex-end; align-items: flex-start; padding-top: 2px;">
                     <div class="search-box" style="margin-bottom: 0;">
                         <input type="text" id="searchInput" placeholder="🔍 搜尋英雄、地圖" onkeypress="if(event.key === 'Enter') handleSearch()" style="width: 240px; padding: 8px 12px; box-sizing: border-box;">
                         <button id="btn-search" onclick="handleSearch()" style="padding: 8px 0; width: 80px; text-align: center; white-space:nowrap; box-sizing: border-box;">查詢</button>
@@ -664,6 +675,16 @@ def pro_dashboard(tag: str = ""):
             let activePage = sessionStorage.getItem('activePage') || 'main';
             let currentLang = localStorage.getItem('lang') || 'zh';
             
+            // 取得目前的 URL 標籤用於判斷 Focus 狀態
+            const urlParams = new URLSearchParams(window.location.search);
+            let currentUrlTag = urlParams.get('tag');
+            if (currentUrlTag) {
+                currentUrlTag = currentUrlTag.toUpperCase().replace('%23', '#');
+                if (!currentUrlTag.startsWith('#')) currentUrlTag = '#' + currentUrlTag;
+            } else {
+                currentUrlTag = null;
+            }
+            
             const TARGET_SIX_MODES = ['搶星大作戰', '寶石爭奪戰', '金庫攻防戰', '亂鬥足球', '據點搶奪戰', '極限淘汰賽'];
 
             // 🌐 國際化多國語系翻譯字典
@@ -686,7 +707,7 @@ def pro_dashboard(tag: str = ""):
                     trap: '⚠️ 版本陷阱 (頭鐵掉分機)', gem: '💎 潛力神角 (上分奇兵)', wr: '勝率',
                     modal_tot: '【 全模式地圖勝率 (歷史總計) 】', modal_not_found: '資料庫中找不到包含【{q}】的英雄紀錄。',
                     cat_tot: '分類總計', sum_wl: '總勝負', pr: '出場率',
-                    acc1: '一帳', acc2: '二帳', acc3: '三帳'
+                    acc1: '一帳', acc2: '二帳', acc3: '三帳', save_acc: '將此標籤設為快捷：'
                 },
                 'en': {
                     tag_lbl: 'Player Tag:', track: 'Track', search_ph: '🔍 Search Brawler / Map', search_btn: 'Search',
@@ -706,7 +727,7 @@ def pro_dashboard(tag: str = ""):
                     trap: '⚠️ Meta Trap (Trophy Drain)', gem: '💎 Hidden Gem (Trophy Pusher)', wr: 'Win Rate',
                     modal_tot: '【 Win Rate by Mode/Map (All-Time) 】', modal_not_found: 'No records found for brawler containing "{q}".',
                     cat_tot: 'Category Total', sum_wl: 'Total W/L', pr: 'Pick Rate',
-                    acc1: 'Main', acc2: 'Alt 1', acc3: 'Alt 2'
+                    acc1: 'Main', acc2: 'Alt 1', acc3: 'Alt 2', save_acc: 'Save this tag as:'
                 }
             };
 
@@ -714,17 +735,51 @@ def pro_dashboard(tag: str = ""):
                 window.location.href = '/?tag=' + encodeURIComponent(tag);
             }
 
-            function highlightActiveAcc() {
-                const urlParams = new URLSearchParams(window.location.search);
-                let currentUrlTag = urlParams.get('tag');
-                if (currentUrlTag) {
-                    currentUrlTag = currentUrlTag.toUpperCase().replace('%23', '#');
-                    if (!currentUrlTag.startsWith('#')) currentUrlTag = '#' + currentUrlTag;
-                    
-                    if (currentUrlTag === '#9P2GP0UL9') document.getElementById('btn-acc-1').classList.add('active');
-                    else if (currentUrlTag === '#2QGP2L0VP') document.getElementById('btn-acc-2').classList.add('active');
-                    // 當你改了第三個帳號的標籤，記得把下面的 #XXXXXXX 也同步改掉
-                    else if (currentUrlTag === '#XXXXXXX') document.getElementById('btn-acc-3').classList.add('active');
+            // 動態綁定當前標籤到 Local Storage 
+            function bindAcc(slot) {
+                if(!currentUrlTag) return;
+                localStorage.setItem('acc' + slot, currentUrlTag);
+                renderTopAccButtons(); // 立即重新渲染右上角的按鈕
+                
+                // 視覺小回饋 (打勾)
+                const btn = document.getElementById('btn-bind-' + slot);
+                if (btn) {
+                    const originalText = btn.innerText;
+                    btn.innerText = '✔️';
+                    btn.style.borderColor = 'var(--theme-color)';
+                    btn.style.color = 'var(--theme-color)';
+                    setTimeout(() => {
+                        btn.innerText = originalText;
+                        btn.style.borderColor = '#2A323C';
+                        btn.style.color = '#AAAAAA';
+                    }, 1500);
+                }
+            }
+
+            // 動態渲染右上角的帳號按鈕區塊
+            function renderTopAccButtons() {
+                const container = document.getElementById('top-acc-container');
+                if (!container) return;
+                
+                const t = i18n[currentLang];
+                const accNames = [t.acc1, t.acc2, t.acc3];
+                let hasAny = false;
+                let html = "";
+                
+                for(let i=0; i<3; i++) {
+                    let tag = localStorage.getItem('acc'+(i+1));
+                    if(tag) {
+                        hasAny = true;
+                        let isActive = (currentUrlTag === tag) ? 'active' : '';
+                        html += `<button class="top-acc-btn ${isActive}" onclick="switchMainAcc('${tag}')" title="${tag}">${accNames[i]}</button>`;
+                    }
+                }
+                
+                if (hasAny) {
+                    container.innerHTML = html;
+                    container.style.display = 'flex';
+                } else {
+                    container.style.display = 'none';
                 }
             }
 
@@ -750,10 +805,11 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('input-tag').placeholder = currentLang === 'en' ? '#XXXXXXX' : '#XXXXXXX';
                 document.getElementById('btn-track').innerText = t.track;
                 
-                document.getElementById('btn-acc-1').innerText = t.acc1;
-                document.getElementById('btn-acc-2').innerText = t.acc2;
-                document.getElementById('btn-acc-3').innerText = t.acc3;
-
+                const lblSave = document.getElementById('lbl-save-acc'); if(lblSave) lblSave.innerText = t.save_acc;
+                const btnB1 = document.getElementById('btn-bind-1'); if(btnB1) btnB1.innerText = t.acc1;
+                const btnB2 = document.getElementById('btn-bind-2'); if(btnB2) btnB2.innerText = t.acc2;
+                const btnB3 = document.getElementById('btn-bind-3'); if(btnB3) btnB3.innerText = t.acc3;
+                
                 const sInp = document.getElementById('searchInput');
                 if(sInp) sInp.placeholder = t.search_ph;
                 const sBtn = document.getElementById('btn-search');
@@ -788,6 +844,8 @@ def pro_dashboard(tag: str = ""):
                     if (rs.innerText.includes('等待') || rs.innerText.includes('Wait')) rs.innerText = currentLang === 'zh' ? '等待玩家輸入標籤' : 'Waiting for Player Tag';
                     else if (rs.innerText.includes('完成') || rs.innerText.includes('Sync')) rs.innerText = currentLang === 'zh' ? '資料庫同步完成' : 'Database Synced';
                 }
+                
+                renderTopAccButtons(); // 切換語言時重新刷新右上角按鈕的文字
             }
 
             function TL(str) {
@@ -1110,7 +1168,6 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('btn-align-right').classList.toggle('active', align === 'flex-end');
             }
 
-            highlightActiveAcc();
             setLang(currentLang);
             setAlignment(currentAlign);
         </script>
