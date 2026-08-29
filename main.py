@@ -464,7 +464,6 @@ def pro_dashboard(tag: str = ""):
             .nav-btn:hover { background-color: #2A323C; color: #FFFFFF !important; }
             .nav-btn.active { background-color: #2A323C; color: var(--theme-color); }
             
-            /* ✨ 帳號切換按鈕亮度與 nav-btn 統一，採用 #AAAAAA */
             .top-acc-container { display: flex; gap: 6px; background-color: #121212; padding: 4px; border-radius: 10px; border: 1px solid #2A323C; align-items: center; }
             .top-acc-btn { background: transparent; border: none; color: #AAAAAA; padding: 6px 16px; font-weight: bold; cursor: pointer; font-size: 14px; border-radius: 6px; transition: 0.2s; font-family: 'Consolas', monospace; pointer-events: auto; }
             .top-acc-btn:hover:not(.active) { background: #2A323C; color: #FFFFFF; }
@@ -472,6 +471,15 @@ def pro_dashboard(tag: str = ""):
 
             .yt-link { display: flex; align-items: center; gap: 8px; background-color: #1A1F24; border: 1px solid #2A323C; padding: 6px 14px; border-radius: 20px; color: #DDDDDD; text-decoration: none; font-family: 'Segoe UI', Tahoma, sans-serif; font-weight: bold; font-size: 14px; transition: all 0.3s ease; pointer-events: auto; }
             .yt-link:hover { background-color: #2A323C; color: #FFFFFF; border-color: #FF0000; box-shadow: 0 0 12px rgba(255, 0, 0, 0.4); transform: translateY(-1px); }
+
+            /* ✨ 全新語言下拉選單設計 */
+            .lang-dropdown { position: relative; display: inline-block; pointer-events: auto; }
+            .lang-dropbtn { background-color: #121212; color: #AAAAAA; padding: 8px 15px; font-size: 15px; border: 1px solid #2A323C; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Consolas', monospace; display: flex; align-items: center; gap: 5px; transition: 0.3s; }
+            .lang-dropbtn:hover { border-color: var(--theme-color); color: #FFFFFF; }
+            .lang-dropdown-content { display: none; position: absolute; right: 0; background-color: #1A1F24; min-width: 120px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.8); z-index: 100; border-radius: 8px; border: 1px solid #2A323C; overflow: hidden; margin-top: 5px; }
+            .lang-dropdown-content a { color: #AAAAAA; padding: 12px 16px; text-decoration: none; display: block; font-family: 'Consolas', monospace; font-size: 14px; font-weight: bold; transition: 0.2s; }
+            .lang-dropdown-content a:hover { background-color: #2A323C; color: var(--theme-color); }
+            .lang-dropdown:hover .lang-dropdown-content { display: block; }
 
             .search-box { display: flex; gap: 10px; }
             .search-box input { background-color: #121212; border: 1px solid #2A323C; color: var(--theme-color); border-radius: 8px; font-family: 'Consolas', monospace; font-size: 16px; outline: none; transition: border-color 0.3s; box-sizing: border-box; }
@@ -579,10 +587,16 @@ def pro_dashboard(tag: str = ""):
                 </div>
             </div>
 
-            <div style="position: absolute; right: 5vw; z-index: 10; pointer-events: auto;">
-                <div class="lang-switch" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px;">
-                    <button id="lang-zh" onclick="setLang('zh')" style="background: var(--theme-color); color: #121212; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">繁</button>
-                    <button id="lang-en" onclick="setLang('en')" style="background: transparent; color: #AAAAAA; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">EN</button>
+            <!-- ✨ 全新的下拉式語言選單 -->
+            <div style="position: absolute; right: 5vw; z-index: 100; pointer-events: auto;">
+                <div class="lang-dropdown">
+                    <button class="lang-dropbtn" id="current-lang-btn">🌐 繁體中文 ▼</button>
+                    <div class="lang-dropdown-content">
+                        <a href="javascript:void(0);" onclick="setLang('zh')">繁體中文</a>
+                        <a href="javascript:void(0);" onclick="setLang('en')">English</a>
+                        <a href="javascript:void(0);" onclick="setLang('jp')">日本語</a>
+                        <a href="javascript:void(0);" onclick="setLang('kr')">한국어</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -690,11 +704,12 @@ def pro_dashboard(tag: str = ""):
         <script>
             // ==========================================
             // ⚙️ 帳號配置區 (純粹留空，由 LocalStorage 儲存)
+            // ✨ 加入了日文與韓文的按鈕翻譯支援
             // ==========================================
             const MY_ACCOUNTS = [
-                { nameZh: 'Main', nameEn: 'Main' },
-                { nameZh: 'Alt 1', nameEn: 'Alt 1' },
-                { nameZh: 'Alt 2', nameEn: 'Alt 2' }
+                { nameZh: 'Main', nameEn: 'Main', nameJp: 'メイン', nameKr: '본계정' },
+                { nameZh: 'Alt 1', nameEn: 'Alt 1', nameJp: 'サブ 1', nameKr: '부계정 1' },
+                { nameZh: 'Alt 2', nameEn: 'Alt 2', nameJp: 'サブ 2', nameKr: '부계정 2' }
             ];
             // ==========================================
 
@@ -718,6 +733,7 @@ def pro_dashboard(tag: str = ""):
             
             const TARGET_SIX_MODES = ['搶星大作戰', '寶石爭奪戰', '金庫攻防戰', '亂鬥足球', '據點搶奪戰', '極限淘汰賽'];
 
+            // ✨ i18n 完整四國語言翻譯字典
             const i18n = {
                 'zh': {
                     tag_lbl: '請輸入玩家標籤：', track: '追蹤', search_ph: '🔍 搜尋英雄、地圖', search_btn: '查詢',
@@ -738,7 +754,7 @@ def pro_dashboard(tag: str = ""):
                     modal_tot: '【 全模式地圖勝率 (歷史總計) 】', modal_not_found: '資料庫中找不到包含【{q}】的英雄紀錄。',
                     cat_tot: '分類總計', sum_wl: '總勝負', pr: '出場率',
                     current_player_lbl: '當前玩家：', btn_reenter: '重新輸入',
-                    enter_prompt: '請輸入【{n}】的標籤：'
+                    enter_prompt: '請輸入【{n}】的標籤：', empty_slot: '空位 (點擊設定)'
                 },
                 'en': {
                     tag_lbl: 'Player Tag:', track: 'Track', search_ph: '🔍 Search Brawler / Map', search_btn: 'Search',
@@ -759,11 +775,52 @@ def pro_dashboard(tag: str = ""):
                     modal_tot: '【 Win Rate by Mode/Map (All-Time) 】', modal_not_found: 'No records found for brawler containing "{q}".',
                     cat_tot: 'Category Total', sum_wl: 'Total W/L', pr: 'Pick Rate',
                     current_player_lbl: 'Current Player:', btn_reenter: 'Change Tag',
-                    enter_prompt: 'Enter tag for {n}:'
+                    enter_prompt: 'Enter tag for {n}:', empty_slot: 'Empty (Click to set)'
+                },
+                'jp': {
+                    tag_lbl: 'プレイヤータグ：', track: '検索', search_ph: '🔍 キャラクター、マップを検索', search_btn: '検索',
+                    welcome_t: 'Brawl Tacticsへようこそ',
+                    welcome_d: '強力なブロスタeスポーツデータ分析システムです。<br>プレイヤータグ（#を含む）を入力して統計を確認してください。',
+                    trophies: '🏆 トロフィー', v3v3: '⚔️ 3V3 勝利数', elo: '🎯 ランク Elo', tier: '⭐ ランク帯',
+                    footer: 'Powered by Render Cloud Environment',
+                    btn_ranked: '▶ ランク戦へ切替', btn_main: '◀ 総合戦績へ戻る',
+                    btn_ses: '▶ 今回のセッション', btn_all: '▶ 累計戦績',
+                    m_bounty: '賞金稼ぎ', m_gem: 'エメラルドハント', m_heist: '強奪', m_ball: 'ブロストライカー', m_hot: 'ホットゾーン', m_knock: 'ノックアウト',
+                    c_rk: '🏅 ランク戦', c_ca: '⏳ ノーマル', c_sp: '🎪 特別イベント', c_tot: '📊 総合戦績',
+                    rk_ses: '🏅 ランク戦 (今回)', rk_all: '🏅 ランク戦 (累計)',
+                    no_rk_ses: '今回のセッションにランク戦の記録がありません', no_rk_all: 'データベースにランク戦の記録がありません',
+                    season: ' シーズン {s}', ses_match: '今回の対戦', total_match: '合計試合数: ',
+                    no_hero: '(今回不参加)', hero_ses: '⚔️ 参加キャラクター ({n}試合)',
+                    req_3: '(ランキング表示には3試合必要です)', pr_top: '📊 使用率 Top 3', wr_top: '🏆 勝率 Top 3',
+                    trap: '⚠️ 環境の罠 (トロ下げ注意)', gem: '💎 隠れた強キャラ (トロ上げ推奨)', wr: '勝率',
+                    modal_tot: '【 モード別マップ勝率 (累計) 】', modal_not_found: '「{q}」を含む記録は見つかりませんでした。',
+                    cat_tot: 'カテゴリ計', sum_wl: '合計勝敗', pr: '使用率',
+                    current_player_lbl: '現在のプレイヤー：', btn_reenter: '再入力',
+                    enter_prompt: '【{n}】のタグを入力：', empty_slot: '空き (クリックで設定)'
+                },
+                'kr': {
+                    tag_lbl: '플레이어 태그:', track: '검색', search_ph: '🔍 브롤러, 맵 검색', search_btn: '검색',
+                    welcome_t: 'Brawl Tactics에 오신 것을 환영합니다',
+                    welcome_d: '강력한 브롤스타즈 e스포츠 데이터 분석 시스템입니다.<br>플레이어 태그(# 포함)를 입력하여 전적을 확인하세요.',
+                    trophies: '🏆 트로피', v3v3: '⚔️ 3V3 승리', elo: '🎯 랭크 Elo', tier: '⭐ 랭크',
+                    footer: 'Powered by Render Cloud Environment',
+                    btn_ranked: '▶ 랭크전으로 전환', btn_main: '◀ 전체 전적',
+                    btn_ses: '▶ 이번 세션', btn_all: '▶ 전체 기록',
+                    m_bounty: '바운티', m_gem: '젬 그랩', m_heist: '하이스트', m_ball: '브롤 볼', m_hot: '핫 존', m_knock: '녹아웃',
+                    c_rk: '🏅 랭크전', c_ca: '⏳ 일반 모드', c_sp: '🎪 특수 이벤트', c_tot: '📊 전체 전적',
+                    rk_ses: '🏅 랭크전 (세션)', rk_all: '🏅 랭크전 (전체)',
+                    no_rk_ses: '이번 세션에 랭크전 기록이 없습니다', no_rk_all: '데이터베이스에 랭크전 기록이 없습니다',
+                    season: ' 시즌 {s}', ses_match: '이번 세션', total_match: '총 경기 수: ',
+                    no_hero: '(이번 세션 미참여)', hero_ses: '⚔️ 플레이한 브롤러 ({n}경기)',
+                    req_3: '(순위를 보려면 3경기 이상 필요)', pr_top: '📊 픽률 Top 3', wr_top: '🏆 승률 Top 3',
+                    trap: '⚠️ 메타 함정 (트로피 하락)', gem: '💎 숨은 꿀픽 (트로피 상승)', wr: '승률',
+                    modal_tot: '【 모드별 맵 승률 (전체) 】', modal_not_found: '"{q}"에 대한 기록을 찾을 수 없습니다.',
+                    cat_tot: '카테고리 합계', sum_wl: '총 승패', pr: '픽률',
+                    current_player_lbl: '현재 플레이어:', btn_reenter: '태그 변경',
+                    enter_prompt: '【{n}】 태그 입력:', empty_slot: '빈 슬롯 (클릭하여 설정)'
                 }
             };
 
-            // ✨ 帳號點擊邏輯：有資料就跳轉，沒資料就回首頁並準備輸入
             function handleAccClick(slotIndex) {
                 let tag = localStorage.getItem('acc' + slotIndex);
 
@@ -772,7 +829,6 @@ def pro_dashboard(tag: str = ""):
                         window.location.href = '/?tag=' + encodeURIComponent(tag);
                     }
                 } else {
-                    // 單純跳回首頁並將焦點放在輸入框，絕對不強行綁定！
                     sessionStorage.setItem('active_slot', slotIndex);
                     if (currentUrlTag) {
                         window.location.href = '/';
@@ -795,7 +851,6 @@ def pro_dashboard(tag: str = ""):
                 }
             }
 
-            // 使用者在表單按下追蹤時，才進行儲存
             document.getElementById('track-form').addEventListener('submit', function(event) {
                 let inputEl = document.getElementById('input-tag');
                 if(!inputEl) return;
@@ -809,11 +864,9 @@ def pro_dashboard(tag: str = ""):
 
                 let activeSlot = sessionStorage.getItem('active_slot');
                 
-                // 如果有指定槽位，直接存進該槽位
                 if (activeSlot) {
                     localStorage.setItem('acc' + activeSlot, tag);
                 } 
-                // 如果沒有指定槽位，且該標籤還沒被存過，才依序找空位塞進去
                 else if (tag !== acc1 && tag !== acc2 && tag !== acc3) {
                     if (!acc1) localStorage.setItem('acc1', tag);
                     else if (!acc2) localStorage.setItem('acc2', tag);
@@ -828,15 +881,14 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('input-tag').focus();
             }
 
+            // ✨ 修改後的語言切換系統，支援下拉選單顯示更新
             function setLang(lang) {
                 currentLang = lang;
                 localStorage.setItem('lang', lang);
                 
-                const isEn = lang === 'en';
-                document.getElementById('lang-zh').style.background = isEn ? 'transparent' : 'var(--theme-color)';
-                document.getElementById('lang-zh').style.color = isEn ? '#AAAAAA' : '#121212';
-                document.getElementById('lang-en').style.background = isEn ? 'var(--theme-color)' : 'transparent';
-                document.getElementById('lang-en').style.color = isEn ? '#121212' : '#AAAAAA';
+                const langNames = {'zh': '繁體中文', 'en': 'English', 'jp': '日本語', 'kr': '한국어'};
+                const btn = document.getElementById('current-lang-btn');
+                if(btn) btn.innerHTML = '🌐 ' + langNames[lang] + ' ▼';
                 
                 applyLangText();
                 if (appData['current_player']) {
@@ -851,7 +903,12 @@ def pro_dashboard(tag: str = ""):
                 let lblTag = document.getElementById('lbl-tag'); 
                 
                 if (window.location.pathname === '/' && !currentUrlTag && activeSlot) {
-                    let accName = currentLang === 'zh' ? MY_ACCOUNTS[parseInt(activeSlot)-1].nameZh : MY_ACCOUNTS[parseInt(activeSlot)-1].nameEn;
+                    let accObj = MY_ACCOUNTS[parseInt(activeSlot)-1];
+                    let accName = accObj.nameZh;
+                    if(currentLang === 'en') accName = accObj.nameEn;
+                    if(currentLang === 'jp') accName = accObj.nameJp;
+                    if(currentLang === 'kr') accName = accObj.nameKr;
+                    
                     if(lblTag) lblTag.innerText = t.enter_prompt.replace('{n}', accName);
                 } else {
                     if(lblTag) lblTag.innerText = t.tag_lbl;
@@ -904,15 +961,14 @@ def pro_dashboard(tag: str = ""):
                 renderTopAccButtons();
             }
 
-            // ✨ 將切換帳號的按鈕換成淺色，並減低空位的透明度變暗
             function renderTopAccButtons() {
                 const container = document.getElementById('top-acc-container');
                 if (!container) return;
                 
                 let html = "";
-                let activeSlot = sessionStorage.getItem('active_slot') || '1';
+                let activeSlot = sessionStorage.getItem('active_slot');
+                const t = i18n[currentLang];
 
-                // 確認當前正在觀看的 tag 對應到哪一個按鈕
                 if (currentUrlTag) {
                     for(let i=1; i<=3; i++) {
                         let savedTag = localStorage.getItem('acc'+i);
@@ -924,13 +980,17 @@ def pro_dashboard(tag: str = ""):
                     }
                 }
 
-                // 畫出三個按鈕
                 for(let i=1; i<=3; i++) {
                     let tag = localStorage.getItem('acc'+i);
                     let isActive = (activeSlot === i.toString() && (tag === currentUrlTag || !currentUrlTag)) ? 'active' : '';
                     let opacity = tag ? '1' : '0.6'; 
-                    let title = tag ? tag : (currentLang === 'zh' ? '空位 (點擊設定)' : 'Empty (Click to set)');
-                    let btnName = currentLang === 'zh' ? MY_ACCOUNTS[i-1].nameZh : MY_ACCOUNTS[i-1].nameEn;
+                    let title = tag ? tag : t.empty_slot;
+                    
+                    let accObj = MY_ACCOUNTS[i-1];
+                    let btnName = accObj.nameZh;
+                    if(currentLang === 'en') btnName = accObj.nameEn;
+                    if(currentLang === 'jp') btnName = accObj.nameJp;
+                    if(currentLang === 'kr') btnName = accObj.nameKr;
                     
                     html += `<button id="btn-acc-${i}" class="top-acc-btn ${isActive}" onclick="handleAccClick(${i})" title="${title}" style="opacity: ${opacity};">${btnName}</button>`;
                 }
@@ -938,15 +998,30 @@ def pro_dashboard(tag: str = ""):
                 container.innerHTML = html;
             }
 
+            // ✨ 強化版的四國語言雙向轉換系統
             function TL(str) {
                 if (currentLang === 'zh') return str;
                 const map = {
-                    '🏅 排位賽': '🏅 Ranked', '⏳ 一般模式': '⏳ Casual', '🎯 挑戰': '🎯 Challenge', '🎪 特別活動': '🎪 Special', '📊 總戰績': '📊 Total',
-                    '排位賽': 'Ranked', '一般模式': 'Casual', '挑戰': 'Challenge', '特別活動': 'Special Events',
-                    '搶星大作戰': 'Bounty', '寶石爭奪戰': 'Gem Grab', '金庫攻防戰': 'Heist', 
-                    '亂鬥足球': 'Brawl Ball', '據點搶奪戰': 'Hot Zone', '極限淘汰賽': 'Knockout'
+                    'en': {
+                        '🏅 排位賽': '🏅 Ranked', '⏳ 一般模式': '⏳ Casual', '🎯 挑戰': '🎯 Challenge', '🎪 特別活動': '🎪 Special', '📊 總戰績': '📊 Total',
+                        '排位賽': 'Ranked', '一般模式': 'Casual', '挑戰': 'Challenge', '特別活動': 'Special Events',
+                        '搶星大作戰': 'Bounty', '寶石爭奪戰': 'Gem Grab', '金庫攻防戰': 'Heist', 
+                        '亂鬥足球': 'Brawl Ball', '據點搶奪戰': 'Hot Zone', '極限淘汰賽': 'Knockout'
+                    },
+                    'jp': {
+                        '🏅 排位賽': '🏅 ランク戦', '⏳ 一般模式': '⏳ ノーマル', '🎯 挑戰': '🎯 チャレンジ', '🎪 特別活動': '🎪 特別イベント', '📊 總戰績': '📊 総合戦績',
+                        '排位賽': 'ランク戦', '一般模式': 'ノーマル', '挑戰': 'チャレンジ', '特別活動': '特別イベント',
+                        '搶星大作戰': '賞金稼ぎ', '寶石爭奪戰': 'エメラルドハント', '金庫攻防戰': '強奪', 
+                        '亂鬥足球': 'ブロストライカー', '據點搶奪戰': 'ホットゾーン', '極限淘汰賽': 'ノックアウト'
+                    },
+                    'kr': {
+                        '🏅 排位賽': '🏅 랭크전', '⏳ 一般模式': '⏳ 일반 모드', '🎯 挑戰': '🎯 챌린지', '🎪 特別活動': '🎪 특수 이벤트', '📊 總戰績': '📊 전체 전적',
+                        '排位賽': '랭크전', '一般模式': '일반 모드', '挑戰': '챌린지', '特別活動': '특수 이벤트',
+                        '搶星大作戰': '바운티', '寶石爭奪戰': '젬 그랩', '金庫攻防戰': '하이스트', 
+                        '亂鬥足球': '브롤 볼', '據點搶奪戰': '핫 존', '極限淘汰賽': '녹아웃'
+                    }
                 };
-                return map[str] || str;
+                return (map[currentLang] && map[currentLang][str]) || str;
             }
 
             function get_wr_js(w, l, d=0) {
@@ -1027,6 +1102,8 @@ def pro_dashboard(tag: str = ""):
                     const sData = seasonsData[season];
                     
                     let seasonTitleStr = currentLang === 'zh' ? `第 ${season} 賽季` : `Season ${season}`;
+                    if(currentLang === 'jp') seasonTitleStr = `シーズン ${season}`;
+                    
                     let subBadge = isSession ? 
                         `<span style="font-size:14px; color:var(--theme-color); padding: 2px 8px; border: 1px solid var(--theme-color); border-radius: 4px; margin-left:10px;">${t.ses_match}</span>` :
                         ((sData.start_date && sData.end_date) ? ` <span style="font-size:18px; color:#AAAAAA;">(${sData.start_date} ~ ${sData.end_date})</span>` : "");
@@ -1081,7 +1158,7 @@ def pro_dashboard(tag: str = ""):
                                 mHtml += `<div style="color:#777; text-align:center; padding: 30px 0;">${t.req_3}</div>`;
                             } else {
                                 mHtml += `<div style="color:#DDD; font-size:14px; margin: 10px 0 5px 0;">${t.pr_top}</div>`;
-                                topPR.forEach(b => { mHtml += `<div class="b-line-bar"><div class="bar-label"><span class="b-name">🦸 ${b.name}</span><span class="b-data">${(b.pr*100).toFixed(1)}% (${b.matches}${currentLang==='zh'?'場':''})</span></div><div class="bar-track"><div class="bar-fill" style="width: ${b.pr*100}%; background-color: #888888;"></div></div></div>`; });
+                                topPR.forEach(b => { mHtml += `<div class="b-line-bar"><div class="bar-label"><span class="b-name">🦸 ${b.name}</span><span class="b-data">${(b.pr*100).toFixed(1)}% (${b.matches}${currentLang==='zh'||currentLang==='jp'?'場':''})</span></div><div class="bar-track"><div class="bar-fill" style="width: ${b.pr*100}%; background-color: #888888;"></div></div></div>`; });
                                 
                                 mHtml += `<div style="color:#DDD; font-size:14px; margin: 20px 0 5px 0;">${t.wr_top}</div>`;
                                 topWR.forEach(b => { mHtml += `<div class="b-line-bar"><div class="bar-label"><span class="b-name">🦸 ${b.name}</span><span class="b-data">${(b.wr*100).toFixed(1)}% (${b.w}W-${b.l}L)</span></div><div class="bar-track"><div class="bar-fill win" style="width: ${b.wr*100}%; background-color: ${color};"></div></div></div>`; });
@@ -1141,10 +1218,13 @@ def pro_dashboard(tag: str = ""):
                         return;
                     }
                     const bStats = searchData.brawler_details[bName];
-                    modalTitle = currentLang === 'zh' ? `【 ${bName} 】(歷史總計)` : `[ ${bName} ] (All-Time)`;
+                    modalTitle = currentLang === 'zh' || currentLang === 'jp' ? `【 ${bName} 】(${t.btn_all.replace('▶ ','')})` : `[ ${bName} ] (${t.btn_all.replace('▶ ','')})`;
                     let totalRankedMatches = searchData.summary.ranked.w + searchData.summary.ranked.l + searchData.summary.ranked.d;
 
                     let sum_title = currentLang === 'zh' ? '▶ 總結' : '▶ Summary';
+                    if(currentLang === 'jp') sum_title = '▶ まとめ';
+                    if(currentLang === 'kr') sum_title = '▶ 요약';
+                    
                     resultHtml += `<div class="brawler-cat" style="border-left-color:#FFAA00;"><h3>${sum_title} <span style="float:right; color:#FFAA00; font-family:Consolas;">${bStats.summary.split('(')[1].replace(')','')}</span></h3>`;
                     resultHtml += createRowHtml(t.sum_wl, {stats: bStats.summary.split('(')[0].trim(), w: bStats.w, l: bStats.l, d: bStats.d});
                     resultHtml += `</div>`;
@@ -1268,6 +1348,7 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('btn-align-right').classList.toggle('active', align === 'flex-end');
             }
 
+            // 初始化：確保頁面載入時能正確顯示預設語言的下拉選單文字
             setLang(currentLang);
             setAlignment(currentAlign);
         </script>
