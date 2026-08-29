@@ -344,6 +344,7 @@ def pro_dashboard(tag: str = ""):
     if not supabase:
         return HTMLResponse("<h1>資料庫連線失敗，請檢查環境變數。</h1>")
 
+    # 完全匿名化處理，無任何硬編碼標籤
     tag = tag.strip().upper()
     if tag and not tag.startswith("#"):
         tag = "#" + tag
@@ -464,12 +465,12 @@ def pro_dashboard(tag: str = ""):
             .nav-btn:hover { background-color: #2A323C; color: #FFFFFF !important; }
             .nav-btn.active { background-color: #2A323C; }
             
-            .top-acc-btn { background: transparent; border: none; border-right: 1px solid #2A323C; color: #AAAAAA; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.2s; font-family: 'Consolas', monospace; height: 100%; }
+            .top-acc-btn { background: transparent; border: none; border-right: 1px solid #2A323C; color: #AAAAAA; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.2s; font-family: 'Consolas', monospace; height: 100%; pointer-events: auto; }
             .top-acc-btn:last-child { border-right: none; }
             .top-acc-btn:hover:not(.active) { background: #2A323C; color: #FFFFFF; }
             .top-acc-btn.active { background: var(--theme-color); color: #121212; }
 
-            /* ✨ YouTube 超連結按鈕特效 CSS */
+            /* ✨ YT 按鈕美化 CSS */
             .yt-link {
                 display: flex;
                 align-items: center;
@@ -484,6 +485,7 @@ def pro_dashboard(tag: str = ""):
                 font-weight: bold;
                 font-size: 14px;
                 transition: all 0.3s ease;
+                pointer-events: auto;
             }
             .yt-link:hover {
                 background-color: #2A323C;
@@ -566,10 +568,9 @@ def pro_dashboard(tag: str = ""):
     </head>
     <body>
         
-        <div style="width: 100%; background-color: #0B1015; border-bottom: 2px solid #1A1F24; padding: 12px 5vw; display: flex; justify-content: space-between; align-items: center; position: fixed; top: 0; left: 0; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.6); box-sizing: border-box;">
+        <div style="width: 100%; background-color: #0B1015; border-bottom: 2px solid #1A1F24; height: 64px; position: fixed; top: 0; left: 0; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.6); box-sizing: border-box;">
             
-            <!-- ✨ 左側：Brawl Tracker 標誌 + YT 頻道按鈕 -->
-            <div style="display: flex; align-items: center; gap: 30px;">
+            <div style="position: absolute; left: 5vw; top: 0; bottom: 0; display: flex; align-items: center; z-index: 10; pointer-events: auto;">
                 <a href="javascript:window.location.reload();" style="display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer;" title="重新整理資料">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="36" height="36">
                         <rect x="2" y="8" width="28" height="16" rx="8" fill="#00FFAA" />
@@ -581,23 +582,24 @@ def pro_dashboard(tag: str = ""):
                         Brawl Tracker
                     </span>
                 </a>
-                
-                <!-- 新增的 YT 專屬膠囊超連結 -->
-                <a href="http://www.youtube.com/@Jacky%E9%99%B3%E7%9A%AE" target="_blank" class="yt-link" title="前往 Jacky陳皮 的 YouTube 頻道">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="#FF0000">
-                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                    </svg>
-                    <span>YT: Jacky陳皮</span>
-                </a>
+            </div>
+            
+            <div style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; justify-content: center; pointer-events: none; z-index: 5;">
+                <div style="width: 100%; max-width: 900px; padding: 0 40px; box-sizing: content-box; display: flex; align-items: center;">
+                    <a href="http://www.youtube.com/@Jacky%E9%99%B3%E7%9A%AE" target="_blank" class="yt-link" title="前往 Jacky陳皮 的 YouTube 頻道">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="#FF0000">
+                            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                        </svg>
+                        <span>YT: Jacky陳皮</span>
+                    </a>
+                </div>
             </div>
 
-            <!-- 右側：動態載入的帳號捷徑區塊與語言切換 -->
-            <div style="display: flex; align-items: center; gap: 20px;">
+            <div style="position: absolute; right: 5vw; top: 0; bottom: 0; display: flex; align-items: center; gap: 20px; z-index: 10; pointer-events: auto;">
                 <div id="top-acc-container" style="display: none; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px;">
-                    <!-- JS 根據 Local Storage 動態生成一二三帳按鈕 -->
-                </div>
+                    </div>
 
-                <div class="lang-switch" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px;">
+                <div class="lang-switch" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px; pointer-events: auto;">
                     <button id="lang-zh" onclick="setLang('zh')" style="background: var(--theme-color); color: #121212; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">繁</button>
                     <button id="lang-en" onclick="setLang('en')" style="background: transparent; color: #AAAAAA; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">EN</button>
                 </div>
@@ -629,18 +631,15 @@ def pro_dashboard(tag: str = ""):
                 </div>
             </div>
 
-            <!-- 左側區域：玩家名稱顯示取代輸入框 -->
             <div class="header">
                 <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;">
                     
-                    <!-- 狀態 1：輸入模式 (預設顯示，成功載入玩家時隱藏) -->
                     <form id="track-form" onsubmit="handleTrackSubmit(event)" style="display:flex; align-items:center; gap: 10px; margin:0;">
                         <span id="lbl-tag" style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3); display: inline-block;">請輸入玩家標籤：</span>
                         <input type="text" id="input-tag" value="__CURRENT_TAG__" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
                         <button type="submit" id="btn-track" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 0; width: 80px; text-align: center; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s; white-space:nowrap;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
                     </form>
 
-                    <!-- 狀態 2：玩家名稱模式 (成功載入時顯示，隱藏輸入框) -->
                     <div id="player-name-display" style="display:none; align-items:center; gap: 15px; margin:0;">
                         <span id="lbl-current-player" style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3); display: inline-block;">當前玩家：</span>
                         <span id="val-player-name" style="color:#FFFFFF; font-size:26px; font-weight:900; letter-spacing:1px; white-space:nowrap;">-</span>
@@ -813,29 +812,17 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('input-tag').focus();
             }
 
-            function renderTopAccButtons() {
-                const container = document.getElementById('top-acc-container');
-                if (!container) return;
-                
-                const t = i18n[currentLang];
-                const accNames = [t.acc1, t.acc2, t.acc3];
-                let hasAny = false;
-                let html = "";
-                
-                for(let i=0; i<3; i++) {
-                    let tag = localStorage.getItem('acc'+(i+1));
-                    if(tag) {
-                        hasAny = true;
-                        let isActive = (currentUrlTag === tag) ? 'active' : '';
-                        html += `<button id="btn-acc-${i+1}" class="top-acc-btn ${isActive}" onclick="handleAccClick(${i+1})" title="${tag}">${accNames[i]}</button>`;
+            function highlightActiveAcc() {
+                document.getElementById('btn-acc-1').classList.remove('active');
+                document.getElementById('btn-acc-2').classList.remove('active');
+                document.getElementById('btn-acc-3').classList.remove('active');
+
+                if (currentUrlTag) {
+                    for(let i=1; i<=3; i++) {
+                        if (currentUrlTag === localStorage.getItem('acc'+i)) {
+                            document.getElementById('btn-acc-'+i).classList.add('active');
+                        }
                     }
-                }
-                
-                if (hasAny) {
-                    container.innerHTML = html;
-                    container.style.display = 'flex';
-                } else {
-                    container.style.display = 'none';
                 }
             }
 
@@ -910,8 +897,38 @@ def pro_dashboard(tag: str = ""):
                     if (rs.innerText.includes('等待') || rs.innerText.includes('Wait')) rs.innerText = currentLang === 'zh' ? '等待玩家輸入標籤' : 'Waiting for Player Tag';
                     else if (rs.innerText.includes('完成') || rs.innerText.includes('Sync')) rs.innerText = currentLang === 'zh' ? '資料庫同步完成' : 'Database Synced';
                 }
-                
+
                 renderTopAccButtons();
+            }
+
+            function renderTopAccButtons() {
+                const container = document.getElementById('top-acc-container');
+                if (!container) return;
+                
+                const t = i18n[currentLang];
+                const accNames = [t.acc1, t.acc2, t.acc3];
+                let hasAny = false;
+                let html = "";
+                
+                for(let i=0; i<3; i++) {
+                    let tag = localStorage.getItem('acc'+(i+1));
+                    if(tag) {
+                        hasAny = true;
+                        let isActive = (currentUrlTag === tag) ? 'active' : '';
+                        html += `<button id="btn-acc-${i+1}" class="top-acc-btn ${isActive}" onclick="handleAccClick(${i+1})" title="${tag}">${accNames[i]}</button>`;
+                    } else {
+                        // 即使未設定，也顯示出來讓玩家可以點擊綁定
+                        html += `<button id="btn-acc-${i+1}" class="top-acc-btn" onclick="handleAccClick(${i+1})" title="點擊設定此快捷鍵" style="opacity: 0.5;">+ ${accNames[i]}</button>`;
+                        hasAny = true;
+                    }
+                }
+                
+                if (hasAny) {
+                    container.innerHTML = html;
+                    container.style.display = 'flex';
+                } else {
+                    container.style.display = 'none';
+                }
             }
 
             function TL(str) {
@@ -1243,6 +1260,7 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('btn-align-right').classList.toggle('active', align === 'flex-end');
             }
 
+            highlightActiveAcc();
             setLang(currentLang);
             setAlignment(currentAlign);
         </script>
