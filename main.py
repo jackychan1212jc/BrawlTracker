@@ -349,7 +349,6 @@ def pro_dashboard(tag: str = ""):
     if tag and not tag.startswith("#"):
         tag = "#" + tag
 
-    # UI 顯示狀態切換
     dashboard_display_nav = "grid" if tag else "none"
     dashboard_display = "block" if tag else "none"
     dashboard_display_search = "flex" if tag else "none"
@@ -456,7 +455,6 @@ def pro_dashboard(tag: str = ""):
 
             .container { width: 100%; max-width: 900px; background-color: #1A1F24; border-radius: 15px; border: 1px solid #2A323C; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; }
             
-            /* ✨ 修正：CSS Grid 三等分確保按鈕切換時一毫米都不跳動 */
             .nav-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-bottom: 25px; gap: 15px; }
             .nav-group { display: flex; gap: 10px; background-color: #121212; padding: 5px; border-radius: 10px; border: 1px solid #2A323C; }
             .nav-btn { background: none; border: none; color: #555555; font-size: 16px; font-weight: bold; cursor: pointer; padding: 8px 20px; border-radius: 6px; transition: all 0.3s; font-family: 'Consolas', monospace; }
@@ -536,22 +534,22 @@ def pro_dashboard(tag: str = ""):
     </head>
     <body>
         
-        <!-- 🌟 置頂商用級導航列 (語言對稱靠右) -->
         <div style="width: 100%; background-color: #0B1015; border-bottom: 2px solid #1A1F24; padding: 12px 5vw; display: flex; justify-content: space-between; align-items: center; position: fixed; top: 0; left: 0; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.6); box-sizing: border-box;">
-            <!-- 左側：Brawl Tracker 漸變色與手繪 P2 遊戲機 SVG -->
-            <span style="display: flex; align-items: center; gap: 10px;">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30">
-                    <rect x="1" y="6" width="22" height="12" rx="6" fill="#00FFAA" />
-                    <path d="M 4.25 11.25 h 2 v -2 h 1.5 v 2 h 2 v 1.5 h -2 v 2 h -1.5 v -2 h -2 z" fill="#0B1015" />
-                    <circle cx="15.5" cy="13.5" r="1.5" fill="#0B1015" />
-                    <circle cx="18.5" cy="10.5" r="1.5" fill="#0B1015" />
+            <!-- ✨ 將左側設為可點擊刷新(F5)，並更換為極簡版 P2 遊戲機與漸變色 -->
+            <a href="javascript:window.location.reload();" style="display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer;" title="重新整理資料">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="36" height="36">
+                    <rect x="2" y="8" width="28" height="16" rx="8" fill="#00FFAA" />
+                    <!-- 十字鍵 -->
+                    <path d="M 8 15 h 2 v -2 h 2 v 2 h 2 v 2 h -2 v 2 h -2 v -2 h -2 z" fill="#0B1015" />
+                    <!-- 動作按鈕 -->
+                    <circle cx="23" cy="14" r="1.8" fill="#0B1015" />
+                    <circle cx="19.5" cy="17.5" r="1.8" fill="#0B1015" />
                 </svg>
                 <span style="background: linear-gradient(90deg, #00FFAA, #00b3ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 26px; font-weight: 900; letter-spacing: 1.5px; font-family: 'Segoe UI', Tahoma, sans-serif;">
                     Brawl Tracker
                 </span>
-            </span>
+            </a>
             
-            <!-- 右側：國際化雙語切換開關 -->
             <div class="lang-switch" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px;">
                 <button id="lang-zh" onclick="setLang('zh')" style="background: var(--theme-color); color: #121212; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">繁</button>
                 <button id="lang-en" onclick="setLang('en')" style="background: transparent; color: #AAAAAA; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">EN</button>
@@ -562,7 +560,6 @@ def pro_dashboard(tag: str = ""):
             
             <div class="nav-bar" style="display: __DASHBOARD_DISPLAY_NAV__;">
                 <div class="nav-group" style="justify-self: flex-start;">
-                    <!-- 固定寬度 170px 防擠壓 -->
                     <button id="btn-page-toggle" class="nav-btn active" style="color: var(--theme-color); width: 170px; text-align: center; white-space: nowrap;" onclick="togglePage()">▶ 切換至排位賽</button>
                 </div>
                 
@@ -579,25 +576,22 @@ def pro_dashboard(tag: str = ""):
                 </div>
                 
                 <div class="nav-group" id="view-nav" style="justify-self: flex-end;">
-                    <!-- 固定寬度 140px 防擠壓 -->
                     <button class="nav-btn" onclick="switchView('session')" id="btn-session" style="width: 140px; text-align: center;">▶ 本次區間</button>
                     <button class="nav-btn" onclick="switchView('all_time')" id="btn-all_time" style="width: 140px; text-align: center;">▶ 歷史總計</button>
                 </div>
             </div>
 
+            <!-- ✨ 完美邊界對齊：拔除左方 span 的強制寬度，讓它自然靠左 -->
             <div class="header">
-                <div style="flex: 1; display: flex; justify-content: flex-start; align-items: center;">
-                    <form action="/" method="GET" style="display:flex; align-items:center; gap: 10px; margin:0;">
-                        <!-- ✨ 固定標籤寬度靠右對齊，完美保留漸變色，保證輸入框絕對不亂跳 -->
-                        <span id="lbl-tag" style="background: linear-gradient(90deg, #00FFAA, #00b3ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3); width: 160px; text-align: right; display: inline-block;">請輸入玩家標籤：</span>
-                        <input type="text" name="tag" value="__CURRENT_TAG__" id="input-tag" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
-                        <button type="submit" id="btn-track" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 0; width: 80px; text-align: center; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s; white-space:nowrap;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
-                    </form>
-                </div>
+                <form action="/" method="GET" style="display:flex; align-items:center; gap: 10px; margin:0;">
+                    <span id="lbl-tag" style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3); display: inline-block;">請輸入玩家標籤：</span>
+                    <input type="text" name="tag" value="__CURRENT_TAG__" id="input-tag" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
+                    <button type="submit" id="btn-track" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 0; width: 80px; text-align: center; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s; white-space:nowrap;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
+                </form>
                 
-                <div style="flex: 1; display: __DASHBOARD_DISPLAY_SEARCH__; justify-content: flex-end; align-items: center;">
+                <div style="display: __DASHBOARD_DISPLAY_SEARCH__; align-items: center;">
                     <div class="search-box" style="margin-bottom: 0;">
-                        <!-- ✨ 拉長搜尋框到 240px，讓英文 Map 可以完美顯示不吃字 -->
+                        <!-- ✨ 保留加長版搜尋框，防止英文吃字 -->
                         <input type="text" id="searchInput" placeholder="🔍 搜尋英雄、地圖" onkeypress="if(event.key === 'Enter') handleSearch()" style="width: 240px; padding: 8px 12px; box-sizing: border-box;">
                         <button id="btn-search" onclick="handleSearch()" style="padding: 8px 0; width: 80px; text-align: center; white-space:nowrap; box-sizing: border-box;">查詢</button>
                     </div>
