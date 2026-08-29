@@ -464,7 +464,6 @@ def pro_dashboard(tag: str = ""):
             .nav-btn:hover { background-color: #2A323C; color: #FFFFFF !important; }
             .nav-btn.active { background-color: #2A323C; color: var(--theme-color); }
             
-            /* ✨ 橫向滾動容器：精準控制寬度，隱藏滾動條但可滑動 */
             .top-acc-container { display: flex; gap: 6px; background-color: #121212; padding: 4px; border-radius: 10px; border: 1px solid #2A323C; align-items: center; max-width: 330px; overflow-x: auto; white-space: nowrap; scroll-behavior: smooth; }
             .top-acc-container::-webkit-scrollbar { height: 4px; }
             .top-acc-container::-webkit-scrollbar-track { background: transparent; }
@@ -475,11 +474,9 @@ def pro_dashboard(tag: str = ""):
             .top-acc-btn:hover:not(.active) { background: #2A323C; color: #FFFFFF; }
             .top-acc-btn.active { background: var(--theme-color); color: #121212; opacity: 1 !important; }
 
-            /* ✨ 右側操作按鈕：+ / - / ▼ */
             .slot-ctrl-btn { background-color: #121212; color: #AAAAAA; border: 1px solid #2A323C; border-radius: 8px; width: 32px; height: 36px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; pointer-events: auto; box-sizing: border-box; }
             .slot-ctrl-btn:hover { background-color: #2A323C; color: var(--theme-color); border-color: var(--theme-color); }
 
-            /* ✨ 展開菜單：直立排列，顯示玩家名稱 */
             .acc-expanded-menu { display: none; position: absolute; top: 48px; right: 0; background-color: #1A1F24; border: 1px solid #2A323C; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 200; width: 280px; max-height: 400px; overflow-y: auto; }
             .acc-expanded-menu::-webkit-scrollbar { width: 6px; }
             .acc-expanded-menu::-webkit-scrollbar-thumb { background: #2A323C; border-radius: 3px; }
@@ -596,10 +593,9 @@ def pro_dashboard(tag: str = ""):
                     </a>
                 </div>
 
-                <!-- ✨ 動態帳號區塊：加入了左右兩側的 +/- 控制按鈕與 ▼ 下拉按鈕 -->
                 <div style="pointer-events: auto; display: flex; align-items: center; gap: 8px;">
                     <div class="top-acc-container" id="top-acc-container">
-                        <!-- JS 動態生成按鈕 (最多顯示 4 個，超過會產生橫向滾動) -->
+                        <!-- JS 動態生成按鈕 -->
                     </div>
                     
                     <div style="display: flex; gap: 4px; position: relative;">
@@ -607,7 +603,7 @@ def pro_dashboard(tag: str = ""):
                         <button class="slot-ctrl-btn" onclick="removeSlot()" title="移除帳號欄位">-</button>
                         <button class="slot-ctrl-btn" id="btn-acc-dropdown" onclick="toggleAccDropdown()" title="展開帳號列表" style="font-size: 14px;">▼</button>
                         
-                        <!-- ✨ 直立展開面板 -->
+                        <!-- 直立展開面板 -->
                         <div id="acc-expanded-panel" class="acc-expanded-menu">
                             <!-- JS 動態生成直立清單 -->
                         </div>
@@ -735,7 +731,6 @@ def pro_dashboard(tag: str = ""):
             let activePage = sessionStorage.getItem('activePage') || 'main';
             let currentLang = localStorage.getItem('lang') || 'zh';
             
-            // ✨ 動態欄位狀態管理 (預設 3，最多 10，最少 1)
             let slotCount = parseInt(localStorage.getItem('slotCount')) || 3;
             const MAX_SLOTS = 10;
             const MIN_SLOTS = 1;
@@ -846,7 +841,6 @@ def pro_dashboard(tag: str = ""):
                 }
             };
 
-            // ✨ 動態帳號命名系統
             function getSlotName(index) {
                 if (index === 1) {
                     if (currentLang === 'zh' || currentLang === 'en') return 'Main';
@@ -859,7 +853,6 @@ def pro_dashboard(tag: str = ""):
                 if (currentLang === 'kr') return '부계정 ' + altNum;
             }
 
-            // ✨ 動態新增與刪除欄位邏輯
             function addSlot() {
                 if (slotCount < MAX_SLOTS) {
                     slotCount++;
@@ -885,7 +878,6 @@ def pro_dashboard(tag: str = ""):
                 }
             }
 
-            // ✨ 展開面板邏輯
             function toggleAccDropdown() {
                 const panel = document.getElementById('acc-expanded-panel');
                 if (panel.style.display === 'block') {
@@ -896,7 +888,6 @@ def pro_dashboard(tag: str = ""):
                 }
             }
 
-            // 點擊外部關閉選單
             document.addEventListener('click', function(event) {
                 const panel = document.getElementById('acc-expanded-panel');
                 const btn = document.getElementById('btn-acc-dropdown');
@@ -1080,13 +1071,12 @@ def pro_dashboard(tag: str = ""):
                 renderTopAccButtons();
             }
 
-            // ✨ 動態渲染 1 到 10 個橫向滾動按鈕
             function renderTopAccButtons() {
                 const container = document.getElementById('top-acc-container');
                 if (!container) return;
                 
                 let html = "";
-                let activeSlot = sessionStorage.getItem('active_slot') || '1';
+                let activeSlot = sessionStorage.getItem('active_slot');
                 const t = i18n[currentLang];
 
                 if (currentUrlTag) {
@@ -1142,7 +1132,7 @@ def pro_dashboard(tag: str = ""):
                         '搶星大作戰': '바운티', '寶石爭奪戰': '젬 그랩', '金庫攻防戰': '하이스트', 
                         '亂鬥足球': '브롤 볼', '據點搶奪戰': '핫 존', '極限淘汰賽': '녹아웃',
                         '單人生死鬥': '솔로 쇼다운', '雙人生死鬥': '듀오 쇼다운', '亂鬥擂台': '듀얼',
-                        '積分爭奪戰': '와이프아웃', '亂鬥籃球': '바스켓 브롤', '礦車競 세': '페이로드',
+                        '積分爭奪戰': '와이프아웃', '亂鬥籃球': '바스켓 브롤', '礦車競速': '페이로드',
                         '團隊首領戰': '보스전', '機甲入侵': '로보 럼블', '巨型獵場': '빅 게임',
                         '亂鬥競技場': '브롤 아레나'
                     }
@@ -1312,13 +1302,20 @@ def pro_dashboard(tag: str = ""):
                 if (!query) return;
                 
                 const t = i18n[currentLang];
-                const isChinese = /[\\u4e00-\\u9fff]/.test(query);
+                
+                // ✨ 新的通靈搜尋：檢查是否包含中日韓文字元
+                const isCJK = /[\u4E00-\u9FFF\u3040-\u30FF\uAC00-\uD7A3]/.test(query);
                 const searchData = appData['current_player']['all_time'];
+                
+                // ✨ 新的通靈搜尋：檢查是否真的有這個英雄
+                const bName = Object.keys(searchData.brawler_details).find(k => k.includes(query.toUpperCase()));
+
                 let resultHtml = "";
                 let modalTitle = "";
                 const modalBox = document.getElementById('modal-content-box');
 
-                if (isChinese) {
+                // ✨ 如果包含 CJK，或者不是英雄名稱，就一律顯示「地圖勝率」
+                if (isCJK || !bName) {
                     modalTitle = t.modal_tot;
                     if (modalBox) modalBox.style.maxWidth = "500px"; 
                     
@@ -1337,12 +1334,8 @@ def pro_dashboard(tag: str = ""):
                     });
                     resultHtml += `</div>`;
                 } else {
+                    // ✨ 如果是英文且確實是英雄名稱，就顯示該「英雄勝率」
                     if (modalBox) modalBox.style.maxWidth = "500px";
-                    const bName = Object.keys(searchData.brawler_details).find(k => k.includes(query.toUpperCase()));
-                    if (!bName) {
-                        alert(t.modal_not_found.replace('{q}', query));
-                        return;
-                    }
                     const bStats = searchData.brawler_details[bName];
                     modalTitle = currentLang === 'zh' || currentLang === 'jp' ? `【 ${bName} 】(${t.btn_all.replace('▶ ','')})` : `[ ${bName} ] (${t.btn_all.replace('▶ ','')})`;
                     let totalRankedMatches = searchData.summary.ranked.w + searchData.summary.ranked.l + searchData.summary.ranked.d;
