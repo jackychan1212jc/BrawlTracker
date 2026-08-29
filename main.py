@@ -348,7 +348,6 @@ def pro_dashboard(tag: str = ""):
     if tag and not tag.startswith("#"):
         tag = "#" + tag
 
-    # UI 顯示狀態切換
     dashboard_display_nav = "grid" if tag else "none"
     dashboard_display = "block" if tag else "none"
     dashboard_display_search = "flex" if tag else "none"
@@ -469,10 +468,13 @@ def pro_dashboard(tag: str = ""):
             .top-acc-btn:hover:not(.active) { background: #2A323C; color: #FFFFFF; }
             .top-acc-btn.active { background: var(--theme-color); color: #121212; opacity: 1 !important; }
 
+            /* ✨ 帳號增減按鈕 CSS */
+            .slot-ctrl-btn { background-color: #121212; color: #AAAAAA; border: 1px solid #2A323C; border-radius: 8px; width: 32px; height: 36px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; pointer-events: auto; box-sizing: border-box; }
+            .slot-ctrl-btn:hover { background-color: #2A323C; color: var(--theme-color); border-color: var(--theme-color); }
+
             .yt-link { display: flex; align-items: center; gap: 8px; background-color: #1A1F24; border: 1px solid #2A323C; padding: 6px 14px; border-radius: 20px; color: #DDDDDD; text-decoration: none; font-family: 'Segoe UI', Tahoma, sans-serif; font-weight: bold; font-size: 14px; transition: all 0.3s ease; pointer-events: auto; }
             .yt-link:hover { background-color: #2A323C; color: #FFFFFF; border-color: #FF0000; box-shadow: 0 0 12px rgba(255, 0, 0, 0.4); transform: translateY(-1px); }
 
-            /* ✨ 原生下拉選單設計 (Native Select) */
             .lang-select-container { display: flex; align-items: center; }
             .lang-select { background-color: #1A1F24; color: #AAAAAA; padding: 6px 12px; font-size: 14px; border: 1px solid #2A323C; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Segoe UI', Tahoma, sans-serif; outline: none; transition: 0.3s; pointer-events: auto; }
             .lang-select:hover, .lang-select:focus { color: #FFFFFF; border-color: var(--theme-color); }
@@ -577,14 +579,19 @@ def pro_dashboard(tag: str = ""):
                     </a>
                 </div>
 
-                <div style="pointer-events: auto;">
+                <!-- ✨ 動態帳號區塊：加入了左右兩側的 +/- 控制按鈕 -->
+                <div style="pointer-events: auto; display: flex; align-items: center; gap: 8px;">
                     <div class="top-acc-container" id="top-acc-container">
-                        <!-- JS 動態生成 -->
+                        <!-- JS 動態生成按鈕 -->
+                    </div>
+                    
+                    <div style="display: flex; gap: 4px;">
+                        <button class="slot-ctrl-btn" onclick="addSlot()" title="新增帳號欄位">+</button>
+                        <button class="slot-ctrl-btn" onclick="removeSlot()" title="移除帳號欄位">-</button>
                     </div>
                 </div>
             </div>
 
-            <!-- ✨ 換回最直覺、最原生、最好點擊的 select 下拉選單 -->
             <div style="position: absolute; right: 5vw; z-index: 100; pointer-events: auto;" class="lang-select-container">
                 <select id="lang-select" class="lang-select" onchange="setLang(this.value)">
                     <option value="zh">🌐 繁體中文</option>
@@ -696,12 +703,6 @@ def pro_dashboard(tag: str = ""):
         </div>
 
         <script>
-            const MY_ACCOUNTS = [
-                { nameZh: 'Main', nameEn: 'Main', nameJp: 'メイン', nameKr: '본계정' },
-                { nameZh: 'Alt 1', nameEn: 'Alt 1', nameJp: 'サブ 1', nameKr: '부계정 1' },
-                { nameZh: 'Alt 2', nameEn: 'Alt 2', nameJp: 'サブ 2', nameKr: '부계정 2' }
-            ];
-
             let appData = __APP_DATA_HERE__;
             window.appData = appData;
             
@@ -710,6 +711,11 @@ def pro_dashboard(tag: str = ""):
             let currentDisplayMode = localStorage.getItem('displayMode') || 'bar'; 
             let activePage = sessionStorage.getItem('activePage') || 'main';
             let currentLang = localStorage.getItem('lang') || 'zh';
+            
+            // ✨ 動態欄位狀態管理 (預設 3，最多 10，最少 1)
+            let slotCount = parseInt(localStorage.getItem('slotCount')) || 3;
+            const MAX_SLOTS = 10;
+            const MIN_SLOTS = 1;
             
             const urlParams = new URLSearchParams(window.location.search);
             let currentUrlTag = urlParams.get('tag');
@@ -722,7 +728,6 @@ def pro_dashboard(tag: str = ""):
             
             const TARGET_SIX_MODES = ['搶星大作戰', '寶石爭奪戰', '金庫攻防戰', '亂鬥足球', '據點搶奪戰', '極限淘汰賽'];
 
-            // ✨ i18n 完整四國語言翻譯字典（補齊生死鬥、決鬥，並修復清除按鈕 undefined）
             const i18n = {
                 'zh': {
                     tag_lbl: '請輸入玩家標籤：', track: '追蹤', search_ph: '🔍 搜尋英雄、地圖', search_btn: '查詢',
@@ -744,7 +749,8 @@ def pro_dashboard(tag: str = ""):
                     cat_tot: '分類總計', sum_wl: '總勝負', pr: '出場率',
                     current_player_lbl: '當前玩家：', btn_reenter: '重新輸入',
                     enter_prompt: '請輸入【{n}】的標籤：', empty_slot: '空位 (點擊設定)',
-                    clear_cache: '[ 🗑️ 清除本機紀錄 ]'
+                    clear_cache: '[ 🗑️ 清除本機紀錄 ]',
+                    max_alert: '最多只能設定 10 個帳號欄位！', min_alert: '最少需保留 1 個帳號欄位！'
                 },
                 'en': {
                     tag_lbl: 'Player Tag:', track: 'Track', search_ph: '🔍 Search Brawler / Map', search_btn: 'Search',
@@ -766,7 +772,8 @@ def pro_dashboard(tag: str = ""):
                     cat_tot: 'Category Total', sum_wl: 'Total W/L', pr: 'Pick Rate',
                     current_player_lbl: 'Current Player:', btn_reenter: 'Change Tag',
                     enter_prompt: 'Enter tag for {n}:', empty_slot: 'Empty (Click to set)',
-                    clear_cache: '[ 🗑️ Clear Local Data ]'
+                    clear_cache: '[ 🗑️ Clear Local Data ]',
+                    max_alert: 'Maximum 10 accounts allowed!', min_alert: 'Minimum 1 account required!'
                 },
                 'jp': {
                     tag_lbl: 'プレイヤータグ：', track: '検索', search_ph: '🔍 キャラクター、マップを検索', search_btn: '検索',
@@ -788,7 +795,8 @@ def pro_dashboard(tag: str = ""):
                     cat_tot: 'カテゴリ計', sum_wl: '合計勝敗', pr: '使用率',
                     current_player_lbl: '現在のプレイヤー：', btn_reenter: '再入力',
                     enter_prompt: '【{n}】のタグを入力：', empty_slot: '空き (クリックで設定)',
-                    clear_cache: '[ 🗑️ ローカルデータを消去 ]'
+                    clear_cache: '[ 🗑️ ローカルデータを消去 ]',
+                    max_alert: '最大10個のアカウントまで設定できます。', min_alert: '最低1個のアカウントが必要です。'
                 },
                 'kr': {
                     tag_lbl: '플레이어 태그:', track: '검색', search_ph: '🔍 브롤러, 맵 검색', search_btn: '검색',
@@ -810,9 +818,51 @@ def pro_dashboard(tag: str = ""):
                     cat_tot: '카테고리 합계', sum_wl: '총 승패', pr: '픽률',
                     current_player_lbl: '현재 플레이어:', btn_reenter: '태그 변경',
                     enter_prompt: '【{n}】 태그 입력:', empty_slot: '빈 슬롯 (클릭하여 설정)',
-                    clear_cache: '[ 🗑️ 로컬 데이터 지우기 ]'
+                    clear_cache: '[ 🗑️ 로컬 데이터 지우기 ]',
+                    max_alert: '최대 10개의 계정만 설정할 수 있습니다!', min_alert: '최소 1개의 계정은 유지해야 합니다!'
                 }
             };
+
+            // ✨ 動態帳號命名系統
+            function getSlotName(index) {
+                if (index === 1) {
+                    if (currentLang === 'zh') return 'Main';
+                    if (currentLang === 'en') return 'Main';
+                    if (currentLang === 'jp') return 'メイン';
+                    if (currentLang === 'kr') return '본계정';
+                }
+                let altNum = index - 1;
+                if (currentLang === 'zh') return 'Alt ' + altNum;
+                if (currentLang === 'en') return 'Alt ' + altNum;
+                if (currentLang === 'jp') return 'サブ ' + altNum;
+                if (currentLang === 'kr') return '부계정 ' + altNum;
+            }
+
+            // ✨ 動態新增與刪除欄位邏輯
+            function addSlot() {
+                if (slotCount < MAX_SLOTS) {
+                    slotCount++;
+                    localStorage.setItem('slotCount', slotCount);
+                    renderTopAccButtons();
+                } else {
+                    alert(i18n[currentLang].max_alert);
+                }
+            }
+
+            function removeSlot() {
+                if (slotCount > MIN_SLOTS) {
+                    // 刪除時順便清除該格的記憶
+                    localStorage.removeItem('acc' + slotCount); 
+                    if (sessionStorage.getItem('active_slot') == slotCount) {
+                        sessionStorage.removeItem('active_slot');
+                    }
+                    slotCount--;
+                    localStorage.setItem('slotCount', slotCount);
+                    renderTopAccButtons();
+                } else {
+                    alert(i18n[currentLang].min_alert);
+                }
+            }
 
             function handleAccClick(slotIndex) {
                 let tag = localStorage.getItem('acc' + slotIndex);
@@ -844,6 +894,7 @@ def pro_dashboard(tag: str = ""):
                 }
             }
 
+            // ✨ 自動將新輸入的標籤存入第一個空位或當前活躍空位
             document.getElementById('track-form').addEventListener('submit', function(event) {
                 let inputEl = document.getElementById('input-tag');
                 if(!inputEl) return;
@@ -851,19 +902,28 @@ def pro_dashboard(tag: str = ""):
                 if (!tag) return;
                 if (!tag.startsWith('#')) tag = '#' + tag;
 
-                let acc1 = localStorage.getItem('acc1');
-                let acc2 = localStorage.getItem('acc2');
-                let acc3 = localStorage.getItem('acc3');
-
                 let activeSlot = sessionStorage.getItem('active_slot');
                 
                 if (activeSlot) {
                     localStorage.setItem('acc' + activeSlot, tag);
-                } 
-                else if (tag !== acc1 && tag !== acc2 && tag !== acc3) {
-                    if (!acc1) localStorage.setItem('acc1', tag);
-                    else if (!acc2) localStorage.setItem('acc2', tag);
-                    else if (!acc3) localStorage.setItem('acc3', tag);
+                } else {
+                    // 檢查是否已經存過
+                    let isSaved = false;
+                    for(let i=1; i<=slotCount; i++) {
+                        if (localStorage.getItem('acc'+i) === tag) {
+                            isSaved = true;
+                            break;
+                        }
+                    }
+                    // 沒存過就找第一個空位塞進去
+                    if(!isSaved) {
+                        for(let i=1; i<=slotCount; i++) {
+                            if (!localStorage.getItem('acc'+i)) {
+                                localStorage.setItem('acc'+i, tag);
+                                break;
+                            }
+                        }
+                    }
                 }
             });
             
@@ -874,12 +934,10 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('input-tag').focus();
             }
 
-            // ✨ 用最原生的 select 觸發語言切換
             function setLang(lang) {
                 currentLang = lang;
                 localStorage.setItem('lang', lang);
                 
-                // 確保 Select 的值會跟著改變
                 let langSelect = document.getElementById('lang-select');
                 if (langSelect) langSelect.value = lang;
                 
@@ -896,12 +954,7 @@ def pro_dashboard(tag: str = ""):
                 let lblTag = document.getElementById('lbl-tag'); 
                 
                 if (window.location.pathname === '/' && !currentUrlTag && activeSlot) {
-                    let accObj = MY_ACCOUNTS[parseInt(activeSlot)-1];
-                    let accName = accObj.nameZh;
-                    if(currentLang === 'en') accName = accObj.nameEn;
-                    if(currentLang === 'jp') accName = accObj.nameJp;
-                    if(currentLang === 'kr') accName = accObj.nameKr;
-                    
+                    let accName = getSlotName(parseInt(activeSlot));
                     if(lblTag) lblTag.innerText = t.enter_prompt.replace('{n}', accName);
                 } else {
                     if(lblTag) lblTag.innerText = t.tag_lbl;
@@ -922,8 +975,6 @@ def pro_dashboard(tag: str = ""):
                 if(sBtn) sBtn.innerText = t.search_btn;
                 
                 document.getElementById('footer-cloud').innerHTML = t.footer;
-                
-                // ✨ 解決 undefined Bug 的地方
                 const btnClear = document.getElementById('btn-clear-cache');
                 if (btnClear) btnClear.innerText = t.clear_cache;
                 
@@ -956,6 +1007,7 @@ def pro_dashboard(tag: str = ""):
                 renderTopAccButtons();
             }
 
+            // ✨ 動態渲染 1 到 10 個按鈕
             function renderTopAccButtons() {
                 const container = document.getElementById('top-acc-container');
                 if (!container) return;
@@ -964,8 +1016,9 @@ def pro_dashboard(tag: str = ""):
                 let activeSlot = sessionStorage.getItem('active_slot');
                 const t = i18n[currentLang];
 
+                // 確認當前正在觀看的 tag 對應到哪一個按鈕
                 if (currentUrlTag) {
-                    for(let i=1; i<=3; i++) {
+                    for(let i=1; i<=slotCount; i++) {
                         let savedTag = localStorage.getItem('acc'+i);
                         if (savedTag === currentUrlTag) {
                             activeSlot = i.toString();
@@ -975,17 +1028,12 @@ def pro_dashboard(tag: str = ""):
                     }
                 }
 
-                for(let i=1; i<=3; i++) {
+                for(let i=1; i<=slotCount; i++) {
                     let tag = localStorage.getItem('acc'+i);
                     let isActive = (activeSlot === i.toString() && (tag === currentUrlTag || !currentUrlTag)) ? 'active' : '';
                     let opacity = tag ? '1' : '0.6'; 
                     let title = tag ? tag : t.empty_slot;
-                    
-                    let accObj = MY_ACCOUNTS[i-1];
-                    let btnName = accObj.nameZh;
-                    if(currentLang === 'en') btnName = accObj.nameEn;
-                    if(currentLang === 'jp') btnName = accObj.nameJp;
-                    if(currentLang === 'kr') btnName = accObj.nameKr;
+                    let btnName = getSlotName(i);
                     
                     html += `<button id="btn-acc-${i}" class="top-acc-btn ${isActive}" onclick="handleAccClick(${i})" title="${title}" style="opacity: ${opacity};">${btnName}</button>`;
                 }
@@ -993,7 +1041,6 @@ def pro_dashboard(tag: str = ""):
                 container.innerHTML = html;
             }
 
-            // ✨ 無死角的四國語言完整對照表
             function TL(str) {
                 if (currentLang === 'zh') return str;
                 const map = {
@@ -1355,7 +1402,6 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('btn-align-right').classList.toggle('active', align === 'flex-end');
             }
 
-            // 初始化：設定選單文字，並把 select 切換到對應的值
             document.getElementById('lang-select').value = currentLang;
             setLang(currentLang);
             setAlignment(currentAlign);
