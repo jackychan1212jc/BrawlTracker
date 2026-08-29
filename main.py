@@ -348,6 +348,7 @@ def pro_dashboard(tag: str = ""):
     if tag and not tag.startswith("#"):
         tag = "#" + tag
 
+    # UI 顯示狀態切換
     dashboard_display_nav = "grid" if tag else "none"
     dashboard_display = "block" if tag else "none"
     dashboard_display_search = "flex" if tag else "none"
@@ -471,13 +472,11 @@ def pro_dashboard(tag: str = ""):
             .yt-link { display: flex; align-items: center; gap: 8px; background-color: #1A1F24; border: 1px solid #2A323C; padding: 6px 14px; border-radius: 20px; color: #DDDDDD; text-decoration: none; font-family: 'Segoe UI', Tahoma, sans-serif; font-weight: bold; font-size: 14px; transition: all 0.3s ease; pointer-events: auto; }
             .yt-link:hover { background-color: #2A323C; color: #FFFFFF; border-color: #FF0000; box-shadow: 0 0 12px rgba(255, 0, 0, 0.4); transform: translateY(-1px); }
 
-            .lang-dropdown { position: relative; display: inline-block; pointer-events: auto; }
-            .lang-dropbtn { background-color: #121212; color: #AAAAAA; padding: 8px 15px; font-size: 15px; border: 1px solid #2A323C; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Consolas', monospace; display: flex; align-items: center; gap: 5px; transition: 0.3s; }
-            .lang-dropbtn:hover { border-color: var(--theme-color); color: #FFFFFF; }
-            .lang-dropdown-content { display: none; position: absolute; right: 0; background-color: #1A1F24; min-width: 120px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.8); z-index: 100; border-radius: 8px; border: 1px solid #2A323C; overflow: hidden; margin-top: 5px; }
-            .lang-dropdown-content a { color: #AAAAAA; padding: 12px 16px; text-decoration: none; display: block; font-family: 'Consolas', monospace; font-size: 14px; font-weight: bold; transition: 0.2s; }
-            .lang-dropdown-content a:hover { background-color: #2A323C; color: var(--theme-color); }
-            .lang-dropdown:hover .lang-dropdown-content { display: block; }
+            /* ✨ 原生下拉選單設計 (Native Select) */
+            .lang-select-container { display: flex; align-items: center; }
+            .lang-select { background-color: #1A1F24; color: #AAAAAA; padding: 6px 12px; font-size: 14px; border: 1px solid #2A323C; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Segoe UI', Tahoma, sans-serif; outline: none; transition: 0.3s; pointer-events: auto; }
+            .lang-select:hover, .lang-select:focus { color: #FFFFFF; border-color: var(--theme-color); }
+            .lang-select option { background-color: #1A1F24; color: #FFFFFF; }
 
             .search-box { display: flex; gap: 10px; }
             .search-box input { background-color: #121212; border: 1px solid #2A323C; color: var(--theme-color); border-radius: 8px; font-family: 'Consolas', monospace; font-size: 16px; outline: none; transition: border-color 0.3s; box-sizing: border-box; }
@@ -585,16 +584,14 @@ def pro_dashboard(tag: str = ""):
                 </div>
             </div>
 
-            <div style="position: absolute; right: 5vw; z-index: 100; pointer-events: auto;">
-                <div class="lang-dropdown">
-                    <button class="lang-dropbtn" id="current-lang-btn">🌐 繁體中文 ▼</button>
-                    <div class="lang-dropdown-content">
-                        <a href="javascript:void(0);" onclick="setLang('zh')">繁體中文</a>
-                        <a href="javascript:void(0);" onclick="setLang('en')">English</a>
-                        <a href="javascript:void(0);" onclick="setLang('jp')">日本語</a>
-                        <a href="javascript:void(0);" onclick="setLang('kr')">한국어</a>
-                    </div>
-                </div>
+            <!-- ✨ 換回最直覺、最原生、最好點擊的 select 下拉選單 -->
+            <div style="position: absolute; right: 5vw; z-index: 100; pointer-events: auto;" class="lang-select-container">
+                <select id="lang-select" class="lang-select" onchange="setLang(this.value)">
+                    <option value="zh">🌐 繁體中文</option>
+                    <option value="en">🌐 English</option>
+                    <option value="jp">🌐 日本語</option>
+                    <option value="kr">🌐 한국어</option>
+                </select>
             </div>
         </div>
 
@@ -725,6 +722,7 @@ def pro_dashboard(tag: str = ""):
             
             const TARGET_SIX_MODES = ['搶星大作戰', '寶石爭奪戰', '金庫攻防戰', '亂鬥足球', '據點搶奪戰', '極限淘汰賽'];
 
+            // ✨ i18n 完整四國語言翻譯字典（補齊生死鬥、決鬥，並修復清除按鈕 undefined）
             const i18n = {
                 'zh': {
                     tag_lbl: '請輸入玩家標籤：', track: '追蹤', search_ph: '🔍 搜尋英雄、地圖', search_btn: '查詢',
@@ -745,7 +743,8 @@ def pro_dashboard(tag: str = ""):
                     modal_tot: '【 全模式地圖勝率 (歷史總計) 】', modal_not_found: '資料庫中找不到包含【{q}】的英雄紀錄。',
                     cat_tot: '分類總計', sum_wl: '總勝負', pr: '出場率',
                     current_player_lbl: '當前玩家：', btn_reenter: '重新輸入',
-                    enter_prompt: '請輸入【{n}】的標籤：', empty_slot: '空位 (點擊設定)'
+                    enter_prompt: '請輸入【{n}】的標籤：', empty_slot: '空位 (點擊設定)',
+                    clear_cache: '[ 🗑️ 清除本機紀錄 ]'
                 },
                 'en': {
                     tag_lbl: 'Player Tag:', track: 'Track', search_ph: '🔍 Search Brawler / Map', search_btn: 'Search',
@@ -766,7 +765,8 @@ def pro_dashboard(tag: str = ""):
                     modal_tot: '【 Win Rate by Mode/Map (All-Time) 】', modal_not_found: 'No records found for brawler containing "{q}".',
                     cat_tot: 'Category Total', sum_wl: 'Total W/L', pr: 'Pick Rate',
                     current_player_lbl: 'Current Player:', btn_reenter: 'Change Tag',
-                    enter_prompt: 'Enter tag for {n}:', empty_slot: 'Empty (Click to set)'
+                    enter_prompt: 'Enter tag for {n}:', empty_slot: 'Empty (Click to set)',
+                    clear_cache: '[ 🗑️ Clear Local Data ]'
                 },
                 'jp': {
                     tag_lbl: 'プレイヤータグ：', track: '検索', search_ph: '🔍 キャラクター、マップを検索', search_btn: '検索',
@@ -787,7 +787,8 @@ def pro_dashboard(tag: str = ""):
                     modal_tot: '【 モード別マップ勝率 (累計) 】', modal_not_found: '「{q}」を含む記録は見つかりませんでした。',
                     cat_tot: 'カテゴリ計', sum_wl: '合計勝敗', pr: '使用率',
                     current_player_lbl: '現在のプレイヤー：', btn_reenter: '再入力',
-                    enter_prompt: '【{n}】のタグを入力：', empty_slot: '空き (クリックで設定)'
+                    enter_prompt: '【{n}】のタグを入力：', empty_slot: '空き (クリックで設定)',
+                    clear_cache: '[ 🗑️ ローカルデータを消去 ]'
                 },
                 'kr': {
                     tag_lbl: '플레이어 태그:', track: '검색', search_ph: '🔍 브롤러, 맵 검색', search_btn: '검색',
@@ -808,7 +809,8 @@ def pro_dashboard(tag: str = ""):
                     modal_tot: '【 모드별 맵 승률 (전체) 】', modal_not_found: '"{q}"에 대한 기록을 찾을 수 없습니다.',
                     cat_tot: '카테고리 합계', sum_wl: '총 승패', pr: '픽률',
                     current_player_lbl: '현재 플레이어:', btn_reenter: '태그 변경',
-                    enter_prompt: '【{n}】 태그 입력:', empty_slot: '빈 슬롯 (클릭하여 설정)'
+                    enter_prompt: '【{n}】 태그 입력:', empty_slot: '빈 슬롯 (클릭하여 설정)',
+                    clear_cache: '[ 🗑️ 로컬 데이터 지우기 ]'
                 }
             };
 
@@ -872,13 +874,14 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('input-tag').focus();
             }
 
+            // ✨ 用最原生的 select 觸發語言切換
             function setLang(lang) {
                 currentLang = lang;
                 localStorage.setItem('lang', lang);
                 
-                const langNames = {'zh': '繁體中文', 'en': 'English', 'jp': '日本語', 'kr': '한국어'};
-                const btn = document.getElementById('current-lang-btn');
-                if(btn) btn.innerHTML = '🌐 ' + langNames[lang] + ' ▼';
+                // 確保 Select 的值會跟著改變
+                let langSelect = document.getElementById('lang-select');
+                if (langSelect) langSelect.value = lang;
                 
                 applyLangText();
                 if (appData['current_player']) {
@@ -919,6 +922,8 @@ def pro_dashboard(tag: str = ""):
                 if(sBtn) sBtn.innerText = t.search_btn;
                 
                 document.getElementById('footer-cloud').innerHTML = t.footer;
+                
+                // ✨ 解決 undefined Bug 的地方
                 const btnClear = document.getElementById('btn-clear-cache');
                 if (btnClear) btnClear.innerText = t.clear_cache;
                 
@@ -988,6 +993,7 @@ def pro_dashboard(tag: str = ""):
                 container.innerHTML = html;
             }
 
+            // ✨ 無死角的四國語言完整對照表
             function TL(str) {
                 if (currentLang === 'zh') return str;
                 const map = {
@@ -1349,7 +1355,8 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('btn-align-right').classList.toggle('active', align === 'flex-end');
             }
 
-            // 確保網頁載入時就套用目前的語言設定
+            // 初始化：設定選單文字，並把 select 切換到對應的值
+            document.getElementById('lang-select').value = currentLang;
             setLang(currentLang);
             setAlignment(currentAlign);
         </script>
