@@ -468,7 +468,31 @@ def pro_dashboard(tag: str = ""):
             .top-acc-btn:last-child { border-right: none; }
             .top-acc-btn:hover:not(.active) { background: #2A323C; color: #FFFFFF; }
             .top-acc-btn.active { background: var(--theme-color); color: #121212; }
-            
+
+            /* ✨ YouTube 超連結按鈕特效 CSS */
+            .yt-link {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                background-color: #1A1F24;
+                border: 1px solid #2A323C;
+                padding: 6px 14px;
+                border-radius: 20px;
+                color: #DDDDDD;
+                text-decoration: none;
+                font-family: 'Segoe UI', Tahoma, sans-serif;
+                font-weight: bold;
+                font-size: 14px;
+                transition: all 0.3s ease;
+            }
+            .yt-link:hover {
+                background-color: #2A323C;
+                color: #FFFFFF;
+                border-color: #FF0000;
+                box-shadow: 0 0 12px rgba(255, 0, 0, 0.4);
+                transform: translateY(-1px);
+            }
+
             .search-box { display: flex; gap: 10px; }
             .search-box input { background-color: #121212; border: 1px solid #2A323C; color: var(--theme-color); border-radius: 8px; font-family: 'Consolas', monospace; font-size: 16px; outline: none; transition: border-color 0.3s; box-sizing: border-box; }
             .search-box input:focus { border-color: var(--theme-color); }
@@ -543,23 +567,34 @@ def pro_dashboard(tag: str = ""):
     <body>
         
         <div style="width: 100%; background-color: #0B1015; border-bottom: 2px solid #1A1F24; padding: 12px 5vw; display: flex; justify-content: space-between; align-items: center; position: fixed; top: 0; left: 0; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.6); box-sizing: border-box;">
-            <a href="javascript:window.location.reload();" style="display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer;" title="重新整理資料">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="36" height="36">
-                    <rect x="2" y="8" width="28" height="16" rx="8" fill="#00FFAA" />
-                    <path d="M 8 15 h 2 v -2 h 2 v 2 h 2 v 2 h -2 v 2 h -2 v -2 h -2 z" fill="#0B1015" />
-                    <circle cx="23" cy="14" r="1.8" fill="#0B1015" />
-                    <circle cx="19.5" cy="17.5" r="1.8" fill="#0B1015" />
-                </svg>
-                <span style="background: linear-gradient(90deg, #00FFAA, #00b3ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 26px; font-weight: 900; letter-spacing: 1.5px; font-family: 'Segoe UI', Tahoma, sans-serif;">
-                    Brawl Tracker
-                </span>
-            </a>
             
+            <!-- ✨ 左側：Brawl Tracker 標誌 + YT 頻道按鈕 -->
+            <div style="display: flex; align-items: center; gap: 30px;">
+                <a href="javascript:window.location.reload();" style="display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer;" title="重新整理資料">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="36" height="36">
+                        <rect x="2" y="8" width="28" height="16" rx="8" fill="#00FFAA" />
+                        <path d="M 8 15 h 2 v -2 h 2 v 2 h 2 v 2 h -2 v 2 h -2 v -2 h -2 z" fill="#0B1015" />
+                        <circle cx="23" cy="14" r="1.8" fill="#0B1015" />
+                        <circle cx="19.5" cy="17.5" r="1.8" fill="#0B1015" />
+                    </svg>
+                    <span style="background: linear-gradient(90deg, #00FFAA, #00b3ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 26px; font-weight: 900; letter-spacing: 1.5px; font-family: 'Segoe UI', Tahoma, sans-serif;">
+                        Brawl Tracker
+                    </span>
+                </a>
+                
+                <!-- 新增的 YT 專屬膠囊超連結 -->
+                <a href="http://www.youtube.com/@Jacky%E9%99%B3%E7%9A%AE" target="_blank" class="yt-link" title="前往 Jacky陳皮 的 YouTube 頻道">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="#FF0000">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    </svg>
+                    <span>YT: Jacky陳皮</span>
+                </a>
+            </div>
+
+            <!-- 右側：動態載入的帳號捷徑區塊與語言切換 -->
             <div style="display: flex; align-items: center; gap: 20px;">
-                <div class="account-switch" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px; margin-right: 4vw;">
-                    <button id="btn-acc-1" onclick="handleAccClick(1)" class="top-acc-btn">一帳</button>
-                    <button id="btn-acc-2" onclick="handleAccClick(2)" class="top-acc-btn">二帳</button>
-                    <button id="btn-acc-3" onclick="handleAccClick(3)" class="top-acc-btn">三帳</button>
+                <div id="top-acc-container" style="display: none; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px;">
+                    <!-- JS 根據 Local Storage 動態生成一二三帳按鈕 -->
                 </div>
 
                 <div class="lang-switch" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px;">
@@ -605,7 +640,7 @@ def pro_dashboard(tag: str = ""):
                         <button type="submit" id="btn-track" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 0; width: 80px; text-align: center; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s; white-space:nowrap;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
                     </form>
 
-                    <!-- ✨ 狀態 2：玩家名稱模式 (成功載入時顯示，隱藏輸入框) -->
+                    <!-- 狀態 2：玩家名稱模式 (成功載入時顯示，隱藏輸入框) -->
                     <div id="player-name-display" style="display:none; align-items:center; gap: 15px; margin:0;">
                         <span id="lbl-current-player" style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3); display: inline-block;">當前玩家：</span>
                         <span id="val-player-name" style="color:#FFFFFF; font-size:26px; font-weight:900; letter-spacing:1px; white-space:nowrap;">-</span>
@@ -693,7 +728,6 @@ def pro_dashboard(tag: str = ""):
             
             const TARGET_SIX_MODES = ['搶星大作戰', '寶石爭奪戰', '金庫攻防戰', '亂鬥足球', '據點搶奪戰', '極限淘汰賽'];
 
-            // 🌐 國際化字典更新：加入了玩家名稱顯示的翻譯
             const i18n = {
                 'zh': {
                     tag_lbl: '請輸入玩家標籤：', track: '追蹤', search_ph: '🔍 搜尋英雄、地圖', search_btn: '查詢',
@@ -773,24 +807,35 @@ def pro_dashboard(tag: str = ""):
                 window.location.href = '/?tag=' + encodeURIComponent(tag);
             }
             
-            // ✨ 切換顯示輸入框 (使用者點擊重新輸入)
             function showInputForm() {
                 document.getElementById('track-form').style.display = 'flex';
                 document.getElementById('player-name-display').style.display = 'none';
                 document.getElementById('input-tag').focus();
             }
 
-            function highlightActiveAcc() {
-                document.getElementById('btn-acc-1').classList.remove('active');
-                document.getElementById('btn-acc-2').classList.remove('active');
-                document.getElementById('btn-acc-3').classList.remove('active');
-
-                if (currentUrlTag) {
-                    for(let i=1; i<=3; i++) {
-                        if (currentUrlTag === localStorage.getItem('acc'+i)) {
-                            document.getElementById('btn-acc-'+i).classList.add('active');
-                        }
+            function renderTopAccButtons() {
+                const container = document.getElementById('top-acc-container');
+                if (!container) return;
+                
+                const t = i18n[currentLang];
+                const accNames = [t.acc1, t.acc2, t.acc3];
+                let hasAny = false;
+                let html = "";
+                
+                for(let i=0; i<3; i++) {
+                    let tag = localStorage.getItem('acc'+(i+1));
+                    if(tag) {
+                        hasAny = true;
+                        let isActive = (currentUrlTag === tag) ? 'active' : '';
+                        html += `<button id="btn-acc-${i+1}" class="top-acc-btn ${isActive}" onclick="handleAccClick(${i+1})" title="${tag}">${accNames[i]}</button>`;
                     }
+                }
+                
+                if (hasAny) {
+                    container.innerHTML = html;
+                    container.style.display = 'flex';
+                } else {
+                    container.style.display = 'none';
                 }
             }
 
@@ -812,10 +857,6 @@ def pro_dashboard(tag: str = ""):
 
             function applyLangText() {
                 const t = i18n[currentLang];
-                
-                document.getElementById('btn-acc-1').innerText = t.acc1;
-                document.getElementById('btn-acc-2').innerText = t.acc2;
-                document.getElementById('btn-acc-3').innerText = t.acc3;
                 
                 let settingSlot = sessionStorage.getItem('setting_slot');
                 if (settingSlot && !currentUrlTag) {
@@ -869,6 +910,8 @@ def pro_dashboard(tag: str = ""):
                     if (rs.innerText.includes('等待') || rs.innerText.includes('Wait')) rs.innerText = currentLang === 'zh' ? '等待玩家輸入標籤' : 'Waiting for Player Tag';
                     else if (rs.innerText.includes('完成') || rs.innerText.includes('Sync')) rs.innerText = currentLang === 'zh' ? '資料庫同步完成' : 'Database Synced';
                 }
+                
+                renderTopAccButtons();
             }
 
             function TL(str) {
@@ -1121,7 +1164,6 @@ def pro_dashboard(tag: str = ""):
                 document.documentElement.style.setProperty('--theme-color', data.color);
                 applyPageState();
                 
-                // ✨ 這裡處理：如果有取得玩家真實名稱，就隱藏輸入框，改為顯示名稱與重新輸入按鈕
                 if (data.name) {
                     document.getElementById('track-form').style.display = 'none';
                     document.getElementById('player-name-display').style.display = 'flex';
@@ -1201,7 +1243,6 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('btn-align-right').classList.toggle('active', align === 'flex-end');
             }
 
-            highlightActiveAcc();
             setLang(currentLang);
             setAlignment(currentAlign);
         </script>
