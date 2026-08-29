@@ -385,3 +385,686 @@ def pro_dashboard(tag: str = ""):
                 elo_val = data.get("rankedElo", 0)
                 tier = data.get("rankedRankName", "UNKNOWN")
                 current_season_id = data.get('rankedSeasonId', 48)
+        except Exception:
+            pass
+            
+        res = supabase.table("battlelog").select("*").eq("account", tag).order("battle_time", desc=True).execute()
+        df = pd.DataFrame(res.data)
+        
+        if not df.empty:
+            df = df.rename(columns={
+                'battle_time': '對戰時間',
+                'mode': '模式',
+                'map': '地圖',
+                'type': '類型',
+                'my_brawler': '我方英雄',
+                'result': '戰果',
+                'brawler_trophies': '英雄盃數'
+            })
+            
+            def check_bo3(row):
+                if row.get('類型') in ['soloRanked', 'teamRanked']:
+                    try: return 'BO3' if int(row.get('英雄盃數', 0)) >= 13 else 'BO1'
+                    except: return 'BO3'
+                return '一般'
+            
+            def determine_season(r):
+                if r.get('類型') not in ['soloRanked', 'teamRanked']: return ''
+                dt_str = str(r.get('對戰時間', ''))
+                try:
+                    if datetime.strptime(dt_str, '%Y%m%dT%H%M%S.000Z') <= datetime(2026, 8, 19, 23, 59, 59): 
+                        return '47'
+                    return str(current_season_id)
+                except: return '48'
+
+            df['排位機制'] = df.apply(check_bo3, axis=1)
+            df['賽季'] = df.apply(determine_season, axis=1)
+            
+            df_all_time_grouped = process_and_group_dataframe(df)
+            ui_all_time = build_ui_dict(df_all_time_grouped)
+            ranked_seasons_all_time = build_ranked_ui_dict(df_all_time_grouped)
+            
+            df_session = df[df['對戰時間'] > current_local_time_str.replace('-', '').replace(' ', 'T').replace(':', '') + '.000Z'].copy()
+            df_session_grouped = process_and_group_dataframe(df_session)
+            ui_session = build_ui_dict(df_session_grouped)
+            ranked_seasons_session = build_ranked_ui_dict(df_session_grouped)
+
+    app_data = {
+        "current_player": {
+            'name': player_name,
+            'color': "#00FFAA", 'trophies': current_trophies, 'diff_trophies': '+0', 
+            'victories_3v3': victories_3v3, 'elo': str(elo_val), 'diff_elo': '+0', 'tier': tier,
+            'session': build_js_view_data(ui_session) if tag else empty_view, 
+            'all_time': build_js_view_data(ui_all_time) if tag else empty_view,
+            'ranked_seasons_session': ranked_seasons_session, 
+            'ranked_seasons_all_time': ranked_seasons_all_time
+        }
+    }
+    
+    js_string = json.dumps(app_data, ensure_ascii=False)
+    
+    html_template = """
+    <!DOCTYPE html>
+    <html lang="zh-TW">
+    <head>
+        <meta charset="UTF-8">
+        <title>Brawl Tracker</title>
+        <style>
+            :root { --theme-color: #00FFAA; }
+            
+            body { padding: 100px 8vw 40px 8vw; margin: 0; display: flex; justify-content: center; overflow-y: scroll; background-color: #121212; color: #FFFFFF; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+            body.no-scroll { overflow: hidden; }
+
+            .container { width: 100%; max-width: 900px; background-color: #1A1F24; border-radius: 15px; border: 1px solid #2A323C; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; }
+            
+            .nav-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-bottom: 25px; gap: 15px; }
+            .nav-group { display: flex; gap: 10px; background-color: #121212; padding: 5px; border-radius: 10px; border: 1px solid #2A323C; }
+            .nav-btn { background: none; border: none; color: #555555; font-size: 16px; font-weight: bold; cursor: pointer; padding: 8px 20px; border-radius: 6px; transition: all 0.3s; font-family: 'Consolas', monospace; }
+            .nav-btn:hover { background-color: #2A323C; color: #FFFFFF !important; }
+            .nav-btn.active { background-color: #2A323C; }
+            
+            .top-acc-btn { background: transparent; border: none; border-right: 1px solid #2A323C; color: #AAAAAA; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.2s; font-family: 'Consolas', monospace; height: 100%; pointer-events: auto; }
+            .top-acc-btn:last-child { border-right: none; }
+            .top-acc-btn:hover:not(.active) { background: #2A323C; color: #FFFFFF; }
+            .top-acc-btn.active { background: var(--theme-color); color: #121212; opacity: 1 !important; }
+
+            .yt-link {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                background-color: #1A1F24;
+                border: 1px solid #2A323C;
+                padding: 6px 14px;
+                border-radius: 20px;
+                color: #DDDDDD;
+                text-decoration: none;
+                font-family: 'Segoe UI', Tahoma, sans-serif;
+                font-weight: bold;
+                font-size: 14px;
+                transition: all 0.3s ease;
+                pointer-events: auto;
+            }
+            .yt-link:hover {
+                background-color: #2A323C;
+                color: #FFFFFF;
+                border-color: #FF0000;
+                box-shadow: 0 0 12px rgba(255, 0, 0, 0.4);
+                transform: translateY(-1px);
+            }
+
+            .search-box { display: flex; gap: 10px; }
+            .search-box input { background-color: #121212; border: 1px solid #2A323C; color: var(--theme-color); border-radius: 8px; font-family: 'Consolas', monospace; font-size: 16px; outline: none; transition: border-color 0.3s; box-sizing: border-box; }
+            .search-box input:focus { border-color: var(--theme-color); }
+            .search-box button { background-color: #1A1F24; border: 1px solid #2A323C; color: #FFFFFF; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-family: 'Consolas', monospace; font-weight: bold; box-sizing: border-box; }
+            .search-box button:hover { background-color: var(--theme-color); color: #121212; }
+
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid var(--theme-color); padding-bottom: 20px; margin-bottom: 30px; transition: border-color 0.3s; flex-wrap: nowrap; overflow: hidden; }
+            
+            .top-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
+            .stat-box { background-color: #121212; border-radius: 12px; padding: 20px; text-align: center; border-left: 4px solid var(--theme-color); transition: border-color 0.3s; }
+            .stat-box .title { font-size: 16px; color: #AAAAAA; margin-bottom: 8px; font-weight: bold; white-space: nowrap; }
+            .stat-box .value { font-size: 24px; font-weight: bold; color: #FFFFFF; font-family: 'Consolas', monospace; transition: text-shadow 0.3s, color 0.3s; }
+            .stat-box .diff { font-size: 14px; color: var(--theme-color); transition: color 0.3s; }
+            
+            .summary-section { background-color: #121212; border-radius: 12px; padding: 25px; margin-bottom: 40px; }
+            
+            .brawler-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+            .brawler-cat { background-color: #121212; border-radius: 12px; padding: 20px; border: 1px solid #1A1F24; transition: all 0.3s ease; }
+            .brawler-cat:hover { border-color: var(--theme-color); transform: translateY(-5px); }
+            .brawler-cat h3 { margin: 0 0 15px 0; color: var(--theme-color); font-size: 20px; border-bottom: 2px solid #2A323C; padding-bottom: 12px; transition: color 0.3s; }
+            
+            .footer { text-align: center; margin-top: 30px; color: #555555; font-size: 14px; }
+
+            .b-line { display: flex; justify-content: space-between; padding: 6px 0; font-family: 'Consolas', monospace; font-size: 16px; border-bottom: 1px solid #1A1F24; }
+            .b-line:last-child { border-bottom: none; }
+            .b-name { color: #DDDDDD; font-weight: bold; }
+            .b-data { color: #FFFFFF; }
+            
+            .b-line-bar { padding: 6px 0; border-bottom: 1px solid #1A1F24; }
+            .b-line-bar:last-child { border-bottom: none; }
+            .b-line-bar .bar-label { display: flex; justify-content: space-between; margin-bottom: 5px; font-family: 'Consolas', monospace; font-size: 15px; }
+            .b-line-bar .bar-track { display: flex; width: 100%; height: 6px; background-color: #2A323C; border-radius: 3px; overflow: hidden; }
+            
+            .summary-line { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px dashed #2A323C; font-size: 20px; font-family: 'Consolas', monospace; }
+            .summary-line.is-total { border-bottom: none; font-weight: bold; font-size: 24px; color: var(--theme-color); margin-top: 10px; transition: color 0.3s; }
+            
+            .summary-line-bar { padding: 12px 0; border-bottom: 1px dashed #2A323C; }
+            .summary-line-bar.is-total { border-bottom: none; margin-top: 10px; }
+            .summary-line-bar .bar-label { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 20px; font-family: 'Consolas', monospace; }
+            .summary-line-bar.is-total .bar-label { font-weight: bold; font-size: 24px; color: var(--theme-color); }
+            .summary-line-bar .bar-track { display: flex; width: 100%; height: 8px; background-color: #2A323C; border-radius: 4px; overflow: hidden; }
+
+            .bar-fill { height: 100%; transition: width 0.5s ease; }
+            .bar-fill.win { background-color: var(--theme-color); }
+
+            ::-webkit-scrollbar { width: 8px; }
+            ::-webkit-scrollbar-track { background: transparent; }
+            ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; border: 2px solid #1A1F24; }
+            ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+            .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); backdrop-filter: blur(5px); justify-content: center; align-items: center; }
+            .modal-content { max-height: 95vh; overflow-y: auto; background-color: #1A1F24; width: 95%; max-width: 500px; border-radius: 15px; border: 1px solid #2A323C; box-shadow: 0 10px 40px rgba(0,0,0,0.8); transition: max-width 0.3s ease; }
+            .modal-header { background: linear-gradient(135deg, #1A1F24 0%, #2A323C 100%); padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--theme-color); position: sticky; top: 0; z-index: 10; }
+            .modal-header h1 { margin: 0; color: #FFFFFF; font-size: 22px; font-family: 'Consolas', monospace; }
+            .close-btn { color: #AAAAAA; font-size: 32px; font-weight: bold; cursor: pointer; transition: color 0.3s; line-height: 1; }
+            .close-btn:hover { color: var(--theme-color); }
+            .modal-body { padding: 15px 20px; }
+            .modal-body .brawler-cat { margin-bottom: 12px; padding: 12px; }
+
+            .map-view-grid { display: flex; flex-direction: column; gap: 12px; }
+            .map-view-grid .brawler-cat { padding: 15px 25px; margin-bottom: 0; }
+            .map-view-grid .brawler-cat h3 { margin: 0 0 5px 0; font-size: 20px; padding-bottom: 8px; }
+            .map-view-grid .summary-line { padding: 8px 0; font-size: 18px; border-bottom: 1px solid #2A323C; margin-bottom: 6px; }
+            .map-view-grid .b-line { padding: 5px 0; font-size: 16px; border-bottom: 1px dashed #1A1F24; }
+            .map-view-grid .b-line:last-child { border-bottom: none; }
+            
+            .page-container { display: none; animation: fadeIn 0.3s ease-in-out; }
+            .page-container.active { display: block; }
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        </style>
+    </head>
+    <body>
+        
+        <div style="width: 100%; background-color: #0B1015; border-bottom: 2px solid #1A1F24; height: 64px; position: fixed; top: 0; left: 0; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.6); box-sizing: border-box;">
+            
+            <div style="position: absolute; left: 5vw; top: 0; bottom: 0; display: flex; align-items: center; z-index: 10; pointer-events: auto;">
+                <a href="javascript:window.location.reload();" style="display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer;" title="重新整理資料">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="36" height="36">
+                        <rect x="2" y="8" width="28" height="16" rx="8" fill="#00FFAA" />
+                        <path d="M 8 15 h 2 v -2 h 2 v 2 h 2 v 2 h -2 v 2 h -2 v -2 h -2 z" fill="#0B1015" />
+                        <circle cx="23" cy="14" r="1.8" fill="#0B1015" />
+                        <circle cx="19.5" cy="17.5" r="1.8" fill="#0B1015" />
+                    </svg>
+                    <span style="background: linear-gradient(90deg, #00FFAA, #00b3ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 26px; font-weight: 900; letter-spacing: 1.5px; font-family: 'Segoe UI', Tahoma, sans-serif;">
+                        Brawl Tracker
+                    </span>
+                </a>
+            </div>
+            
+            <div style="position: absolute; left: max(5vw, calc(50vw - 450px)); top: 0; bottom: 0; display: flex; align-items: center; pointer-events: none; z-index: 5;">
+                <a href="http://www.youtube.com/@Jacky%E9%99%B3%E7%9A%AE" target="_blank" class="yt-link" title="前往 Jacky陳皮 的 YouTube 頻道" style="margin-left: 40px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="#FF0000">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    </svg>
+                    <span>YT: Jacky陳皮</span>
+                </a>
+            </div>
+
+            <div style="position: absolute; right: max(5vw, calc(50vw - 450px)); top: 0; bottom: 0; display: flex; align-items: center; gap: 20px; z-index: 10; pointer-events: auto; padding-right: 40px;">
+                <div id="top-acc-container" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px;">
+                    </div>
+
+                <div class="lang-switch" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px; pointer-events: auto;">
+                    <button id="lang-zh" onclick="setLang('zh')" style="background: var(--theme-color); color: #121212; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">繁</button>
+                    <button id="lang-en" onclick="setLang('en')" style="background: transparent; color: #AAAAAA; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">EN</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            
+            <div class="nav-bar" style="display: __DASHBOARD_DISPLAY_NAV__;">
+                <div class="nav-group" style="justify-self: flex-start;">
+                    <button id="btn-page-toggle" class="nav-btn active" style="color: var(--theme-color); width: 170px; text-align: center; white-space: nowrap;" onclick="togglePage()">▶ 切換至排位賽</button>
+                </div>
+                
+                <div style="display: flex; gap: 15px; justify-self: center;">
+                    <div class="nav-group" id="display-nav">
+                        <button class="nav-btn" onclick="setDisplayMode('data')" id="btn-disp-data" title="文字數據版">🔢</button>
+                        <button class="nav-btn" onclick="setDisplayMode('bar')" id="btn-disp-bar" title="進度條狀版">📊</button>
+                    </div>
+                    <div class="nav-group" id="align-nav">
+                        <button class="nav-btn" onclick="setAlignment('flex-start')" id="btn-align-left" title="靠左對齊">⬅️</button>
+                        <button class="nav-btn" onclick="setAlignment('center')" id="btn-align-center" title="置中對齊">⏹️</button>
+                        <button class="nav-btn" onclick="setAlignment('flex-end')" id="btn-align-right" title="靠右對齊">➡️</button>
+                    </div>
+                </div>
+                
+                <div class="nav-group" id="view-nav" style="justify-self: flex-end;">
+                    <button class="nav-btn" onclick="switchView('session')" id="btn-session" style="width: 140px; text-align: center;">▶ 本次區間</button>
+                    <button class="nav-btn" onclick="switchView('all_time')" id="btn-all_time" style="width: 140px; text-align: center;">▶ 歷史總計</button>
+                </div>
+            </div>
+
+            <div class="header">
+                <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start;">
+                    
+                    <form id="track-form" onsubmit="handleTrackSubmit(event)" style="display:flex; align-items:center; gap: 10px; margin:0;">
+                        <span id="lbl-tag" style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3); display: inline-block;">請輸入玩家標籤：</span>
+                        <input type="text" id="input-tag" value="__CURRENT_TAG__" placeholder="#XXXXXXX" required style="background-color:#121212; border:2px solid #2A323C; color:white; padding:8px 12px; border-radius:8px; font-family:'Consolas', monospace; font-size:18px; outline:none; text-transform:uppercase; width:140px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--theme-color)'" onblur="this.style.borderColor='#2A323C'">
+                        <button type="submit" id="btn-track" style="background-color:var(--theme-color); color:#121212; font-weight:bold; font-size:16px; padding:8px 0; width: 80px; text-align: center; border-radius:8px; border:none; cursor:pointer; transition: opacity 0.3s; white-space:nowrap;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">追蹤</button>
+                    </form>
+
+                    <div id="player-name-display" style="display:none; align-items:center; gap: 15px; margin:0;">
+                        <span id="lbl-current-player" style="color:var(--theme-color); font-size:20px; font-weight:bold; white-space:nowrap; text-shadow: 0 0 10px rgba(0,255,170,0.3); display: inline-block;">當前玩家：</span>
+                        <span id="val-player-name" style="color:#FFFFFF; font-size:26px; font-weight:900; letter-spacing:1px; white-space:nowrap;">-</span>
+                        <button type="button" id="btn-reenter" onclick="showInputForm()" style="background-color:transparent; border:1px solid #2A323C; color:#AAAAAA; font-weight:bold; font-size:14px; padding:6px 15px; border-radius:8px; cursor:pointer; transition: all 0.3s; white-space:nowrap;" onmouseover="this.style.color='#FFF'; this.style.borderColor='var(--theme-color)';" onmouseout="this.style.color='#AAAAAA'; this.style.borderColor='#2A323C';">重新輸入</button>
+                    </div>
+
+                </div>
+                
+                <div style="display: __DASHBOARD_DISPLAY_SEARCH__; align-items: center;">
+                    <div class="search-box" style="margin-bottom: 0;">
+                        <input type="text" id="searchInput" placeholder="🔍 搜尋英雄、地圖" onkeypress="if(event.key === 'Enter') handleSearch()" style="width: 240px; padding: 8px 12px; box-sizing: border-box;">
+                        <button id="btn-search" onclick="handleSearch()" style="padding: 8px 0; width: 80px; text-align: center; white-space:nowrap; box-sizing: border-box;">查詢</button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: __WELCOME_DISPLAY__; text-align: center; padding: 80px 20px;">
+                <div style="font-size: 60px; margin-bottom: 20px;">🎮</div>
+                <h2 id="welcome-title" style="color:var(--theme-color); font-size:32px; margin-bottom:15px; letter-spacing: 2px;">歡迎使用戰術主控台</h2>
+                <p id="welcome-desc" style="color:#AAAAAA; font-size:18px; line-height: 1.6;">這是一套強大的 Brawl Stars 電競級數據分析系統。<br>請在上方輸入玩家標籤 (包含 #) 以建立或查看該玩家的專屬戰報。</p>
+            </div>
+
+            <div id="dashboard-wrapper" style="display: __DASHBOARD_DISPLAY__;">
+                <div id="page-main" class="page-container active">
+                    <div class="top-stats">
+                        <div class="stat-box"><div class="title" id="title-trophies">🏆 總盃數</div><div class="value" id="val-trophies">- <span class="diff" id="diff-trophies">(-)</span></div></div>
+                        <div class="stat-box"><div class="title" id="title-3v3">⚔️ 3V3 勝場</div><div class="value" id="val-3v3">-</div></div>
+                        <div class="stat-box"><div class="title" id="title-elo">🎯 排位 Elo</div><div class="value" id="val-elo">- <span class="diff" id="diff-elo">(-)</span></div></div>
+                        <div class="stat-box"><div class="title" id="title-tier">⭐ 排位段位</div><div class="value" id="val-tier">-</div></div>
+                    </div>
+                    
+                    <div class="summary-section" id="summary-section"></div>
+                    <div class="brawler-grid" id="brawler-grid"></div>
+                </div>
+
+                <div id="page-ranked" class="page-container">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px;">
+                        <div class="stat-box enlarged" style="display: flex; flex-direction: column; justify-content: center; padding: 30px;"><div class="title" id="title-elo-rk">🎯 排位 Elo</div><div class="value" id="val-elo-rk">- <span class="diff" id="diff-elo-rk">(-)</span></div></div>
+                        <div class="stat-box enlarged" style="display: flex; flex-direction: column; justify-content: center; padding: 30px;"><div class="title" id="title-tier-rk">⭐ 排位段位</div><div class="value" id="val-tier-rk">-</div></div>
+                    </div>
+                    
+                    <div class="summary-section" id="summary-ranked-only" style="margin-bottom: 40px; padding: 15px 25px;"></div>
+                    
+                    <div id="ranked-seasons-container"></div>
+                </div>
+            </div>
+
+            <div class="footer">
+                <span id="footer-cloud">系統運作於 Render 雲端環境</span> <br>
+                <span id="refresh-status" style="color:var(--theme-color);">__REFRESH_TEXT__</span>
+                <div style="margin-top: 25px;">
+                    <a href="javascript:void(0);" onclick="localStorage.clear(); sessionStorage.clear(); window.location.href='/';" id="btn-clear-cache" style="color: #555; text-decoration: none; font-size: 12px; transition: color 0.3s;" onmouseover="this.style.color='#FF5555'" onmouseout="this.style.color='#555'">[ 🗑️ 清除本機綁定紀錄 ]</a>
+                </div>
+            </div>
+        </div>
+
+        <div id="searchModal" class="modal">
+            <div class="modal-content" id="modal-content-box">
+                <div class="modal-header">
+                    <h1 id="modal-title">戰術透視</h1>
+                    <span class="close-btn" onclick="closeModal()">&times;</span>
+                </div>
+                <div class="modal-body" id="modal-body"></div>
+            </div>
+        </div>
+
+        <script>
+            let appData = __APP_DATA_HERE__;
+            window.appData = appData;
+            
+            let currentView = sessionStorage.getItem('currentView') || "all_time";
+            let currentAlign = localStorage.getItem('pageAlign') || 'center';
+            let currentDisplayMode = localStorage.getItem('displayMode') || 'bar'; 
+            let activePage = sessionStorage.getItem('activePage') || 'main';
+            let currentLang = localStorage.getItem('lang') || 'zh';
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            let currentUrlTag = urlParams.get('tag');
+            if (currentUrlTag) {
+                currentUrlTag = currentUrlTag.toUpperCase().replace('%23', '#');
+                if (!currentUrlTag.startsWith('#')) currentUrlTag = '#' + currentUrlTag;
+            } else {
+                currentUrlTag = null;
+            }
+            
+            const TARGET_SIX_MODES = ['搶星大作戰', '寶石爭奪戰', '金庫攻防戰', '亂鬥足球', '據點搶奪戰', '極限淘汰賽'];
+
+            const i18n = {
+                'zh': {
+                    tag_lbl: '請輸入玩家標籤：', track: '追蹤', search_ph: '🔍 搜尋英雄、地圖', search_btn: '查詢',
+                    welcome_t: '歡迎使用戰術主控台',
+                    welcome_d: '這是一套強大的 Brawl Stars 電競級數據分析系統。<br>請在上方輸入玩家標籤 (包含 #) 以建立或查看該玩家的專屬戰報。',
+                    trophies: '🏆 總盃數', v3v3: '⚔️ 3V3 勝場', elo: '🎯 排位 Elo', tier: '⭐ 排位段位',
+                    footer: '系統運作於 Render 雲端環境',
+                    btn_ranked: '▶ 切換至排位賽', btn_main: '◀ 返回總戰績',
+                    btn_ses: '▶ 本次區間', btn_all: '▶ 歷史總計',
+                    m_bounty: '搶星大作戰', m_gem: '寶石爭奪戰', m_heist: '金庫攻防戰', m_ball: '亂鬥足球', m_hot: '據點搶奪戰', m_knock: '極限淘汰賽',
+                    c_rk: '🏅 排位賽', c_ca: '⏳ 一般模式', c_sp: '🎪 特別活動', c_tot: '📊 總戰績',
+                    rk_ses: '🏅 排位戰績 (本次)', rk_all: '🏅 排位總計 (歷史)',
+                    no_rk_ses: '本次區間尚未進行任何排位賽', no_rk_all: '資料庫中尚無排位賽紀錄',
+                    season: ' 第 {s} 賽季', ses_match: '本次對戰', total_match: '總局數: ',
+                    no_hero: '(本次未出戰)', hero_ses: '⚔️ 本次出戰英雄 ({n}場)',
+                    req_3: '(該模式需出場滿 3 次才能計算排行榜)', pr_top: '📊 出場率 Top 3', wr_top: '🏆 勝率 Top 3',
+                    trap: '⚠️ 版本陷阱 (頭鐵掉分機)', gem: '💎 潛力神角 (上分奇兵)', wr: '勝率',
+                    modal_tot: '【 全模式地圖勝率 (歷史總計) 】', modal_not_found: '資料庫中找不到包含【{q}】的英雄紀錄。',
+                    cat_tot: '分類總計', sum_wl: '總勝負', pr: '出場率',
+                    acc1: '一帳', acc2: '二帳', acc3: '三帳',
+                    bind_lbl: '綁定 {n} 標籤：', bind_title: '請綁定您的 {n}', bind_desc: '請在上方輸入框填寫玩家標籤，以完成綁定。',
+                    clear_cache: '[ 🗑️ 清除本機綁定紀錄 ]',
+                    current_player_lbl: '當前玩家：', btn_reenter: '重新輸入',
+                    empty_slot: '空欄位 (點擊以查詢新帳號)'
+                },
+                'en': {
+                    tag_lbl: 'Player Tag:', track: 'Track', search_ph: '🔍 Search Brawler / Map', search_btn: 'Search',
+                    welcome_t: 'Welcome to Brawl Tactics',
+                    welcome_d: 'A powerful esports-grade data analytics system for Brawl Stars.<br>Enter a player tag (including #) above to track or view stats.',
+                    trophies: '🏆 Trophies', v3v3: '⚔️ 3V3 Wins', elo: '🎯 Ranked Elo', tier: '⭐ Ranked Tier',
+                    footer: 'Powered by Render Cloud Environment',
+                    btn_ranked: '▶ Ranked Mode', btn_main: '◀ Total Stats',
+                    btn_ses: '▶ Session', btn_all: '▶ All-Time',
+                    m_bounty: 'Bounty', m_gem: 'Gem Grab', m_heist: 'Heist', m_ball: 'Brawl Ball', m_hot: 'Hot Zone', m_knock: 'Knockout',
+                    c_rk: '🏅 Ranked', c_ca: '⏳ Casual', c_sp: '🎪 Special', c_tot: '📊 Total',
+                    rk_ses: '🏅 Ranked (Session)', rk_all: '🏅 Ranked (All-Time)',
+                    no_rk_ses: 'No ranked matches played in this session', no_rk_all: 'No ranked records in database',
+                    season: ' Season {s}', ses_match: 'Session Match', total_match: 'Total Matches: ',
+                    no_hero: '(No matches in session)', hero_ses: '⚔️ Heroes Played ({n})',
+                    req_3: '(Requires 3 matches to rank)', pr_top: '📊 Pick Rate Top 3', wr_top: '🏆 Win Rate Top 3',
+                    trap: '⚠️ Meta Trap (Trophy Drain)', gem: '💎 Hidden Gem (Trophy Pusher)', wr: 'Win Rate',
+                    modal_tot: '【 Win Rate by Mode/Map (All-Time) 】', modal_not_found: 'No records found for brawler containing "{q}".',
+                    cat_tot: 'Category Total', sum_wl: 'Total W/L', pr: 'Pick Rate',
+                    acc1: 'Main', acc2: 'Alt 1', acc3: 'Alt 2',
+                    bind_lbl: 'Bind {n} Tag:', bind_title: 'Bind your {n}', bind_desc: 'Enter your player tag in the input box above to bind.',
+                    clear_cache: '[ 🗑️ Clear Local Data ]',
+                    current_player_lbl: 'Current Player:', btn_reenter: 'Change Tag',
+                    empty_slot: 'Empty Slot (Click to track new account)'
+                }
+            };
+
+            function handleAccClick(slot) {
+                let tag = localStorage.getItem('acc' + slot);
+
+                if (tag) {
+                    if (currentUrlTag !== tag) {
+                        window.location.href = '/?tag=' + encodeURIComponent(tag);
+                    }
+                } else {
+                    // 重點修復：點擊空槽位，記住該槽位，並一律跳回首頁讓用戶輸入
+                    sessionStorage.setItem('active_slot', slot);
+                    if (currentUrlTag) {
+                        window.location.href = '/';
+                    } else {
+                        applyLangText();
+                        renderTopAccButtons();
+                        let inputEl = document.getElementById('input-tag');
+                        if (inputEl) {
+                            inputEl.focus();
+                            inputEl.style.transition = 'all 0.3s';
+                            inputEl.style.borderColor = 'var(--theme-color)';
+                            inputEl.style.boxShadow = '0 0 15px var(--theme-color)';
+                            setTimeout(() => {
+                                inputEl.style.boxShadow = 'none';
+                                inputEl.style.borderColor = '#2A323C';
+                            }, 800);
+                        }
+                    }
+                }
+            }
+
+            function handleTrackSubmit(event) {
+                event.preventDefault();
+                let inputEl = document.getElementById('input-tag');
+                if(!inputEl) return;
+                let tag = inputEl.value.trim().toUpperCase();
+                if (!tag) return;
+                if (!tag.startsWith('#')) tag = '#' + tag;
+
+                let slot = sessionStorage.getItem('active_slot');
+                if (!slot) slot = '1';
+                localStorage.setItem('acc' + slot, tag);
+                sessionStorage.removeItem('active_slot'); 
+
+                window.location.href = '/?tag=' + encodeURIComponent(tag);
+            }
+            
+            function showInputForm() {
+                document.getElementById('track-form').style.display = 'flex';
+                document.getElementById('player-name-display').style.display = 'none';
+                document.getElementById('input-tag').value = '';
+                document.getElementById('input-tag').focus();
+            }
+
+            function setLang(lang) {
+                currentLang = lang;
+                localStorage.setItem('lang', lang);
+                
+                const isEn = lang === 'en';
+                document.getElementById('lang-zh').style.background = isEn ? 'transparent' : 'var(--theme-color)';
+                document.getElementById('lang-zh').style.color = isEn ? '#AAAAAA' : '#121212';
+                document.getElementById('lang-en').style.background = isEn ? 'var(--theme-color)' : 'transparent';
+                document.getElementById('lang-en').style.color = isEn ? '#121212' : '#AAAAAA';
+                
+                applyLangText();
+                if (appData['current_player']) {
+                    render();
+                }
+            }
+
+            function applyLangText() {
+                const t = i18n[currentLang];
+                
+                let settingSlot = sessionStorage.getItem('active_slot');
+                let lblTag = document.getElementById('lbl-tag');
+                let wTitle = document.getElementById('welcome-title');
+                let wDesc = document.getElementById('welcome-desc');
+
+                if (!currentUrlTag && settingSlot && !localStorage.getItem('acc' + settingSlot)) {
+                    let accName = t['acc' + settingSlot];
+                    if(lblTag) lblTag.innerText = t.bind_lbl.replace('{n}', accName);
+                    if(wTitle) wTitle.innerText = t.bind_title.replace('{n}', accName);
+                    if(wDesc) wDesc.innerHTML = t.bind_desc;
+                } else {
+                    if(lblTag) lblTag.innerText = t.tag_lbl;
+                    if(wTitle) wTitle.innerText = t.welcome_t;
+                    if(wDesc) wDesc.innerHTML = t.welcome_d;
+                }
+                
+                document.getElementById('input-tag').placeholder = currentLang === 'en' ? '#XXXXXXX' : '#XXXXXXX';
+                document.getElementById('btn-track').innerText = t.track;
+                
+                const lblCurrent = document.getElementById('lbl-current-player'); if(lblCurrent) lblCurrent.innerText = t.current_player_lbl;
+                const btnRe = document.getElementById('btn-reenter'); if(btnRe) btnRe.innerText = t.btn_reenter;
+                
+                const sInp = document.getElementById('searchInput');
+                if(sInp) sInp.placeholder = t.search_ph;
+                const sBtn = document.getElementById('btn-search');
+                if(sBtn) sBtn.innerText = t.search_btn;
+                
+                document.getElementById('footer-cloud').innerHTML = t.footer;
+                const btnClear = document.getElementById('btn-clear-cache');
+                if (btnClear) btnClear.innerText = t.clear_cache;
+                
+                const bpt = document.getElementById('btn-page-toggle');
+                if (bpt) bpt.innerText = activePage === 'main' ? t.btn_ranked : t.btn_main;
+                
+                const bDispData = document.getElementById('btn-disp-data');
+                if (bDispData) bDispData.title = currentLang === 'en' ? 'Text View' : '文字數據版';
+                const bDispBar = document.getElementById('btn-disp-bar');
+                if (bDispBar) bDispBar.title = currentLang === 'en' ? 'Bar View' : '進度條狀版';
+                
+                const bSes = document.getElementById('btn-session');
+                if (bSes) bSes.innerText = t.btn_ses;
+                const bAll = document.getElementById('btn-all_time');
+                if (bAll) bAll.innerText = t.btn_all;
+
+                const tt = document.getElementById('title-trophies'); if(tt) tt.innerText = t.trophies;
+                const t3 = document.getElementById('title-3v3'); if(t3) t3.innerText = t.v3v3;
+                const te = document.getElementById('title-elo'); if(te) te.innerText = t.elo;
+                const ttr = document.getElementById('title-tier'); if(ttr) ttr.innerText = t.tier;
+                const terk = document.getElementById('title-elo-rk'); if(terk) terk.innerText = t.elo;
+                const ttrrk = document.getElementById('title-tier-rk'); if(ttrrk) ttrrk.innerText = t.tier;
+                
+                const rs = document.getElementById('refresh-status');
+                if (rs) {
+                    if (rs.innerText.includes('等待') || rs.innerText.includes('Wait')) rs.innerText = currentLang === 'zh' ? '等待玩家輸入標籤' : 'Waiting for Player Tag';
+                    else if (rs.innerText.includes('完成') || rs.innerText.includes('Sync')) rs.innerText = currentLang === 'zh' ? '資料庫同步完成' : 'Database Synced';
+                }
+
+                renderTopAccButtons();
+            }
+
+            // ✨ 三個按鈕永遠常駐顯示
+            function renderTopAccButtons() {
+                const container = document.getElementById('top-acc-container');
+                if (!container) return;
+                
+                const t = i18n[currentLang];
+                const accNames = [t.acc1, t.acc2, t.acc3];
+                let html = "";
+                
+                let activeSlot = sessionStorage.getItem('active_slot') || '1';
+
+                // 為了確保萬一用戶直接輸入網址，我們嘗試把 tag 對應到正確的高亮按鈕
+                if (currentUrlTag) {
+                    for(let i=1; i<=3; i++) {
+                        if (localStorage.getItem('acc'+i) === currentUrlTag) {
+                            activeSlot = i.toString();
+                            sessionStorage.setItem('active_slot', activeSlot);
+                            break;
+                        }
+                    }
+                }
+
+                for(let i=1; i<=3; i++) {
+                    let tag = localStorage.getItem('acc'+i);
+                    let isActive = (activeSlot === i.toString() && (tag === currentUrlTag || !currentUrlTag)) ? 'active' : '';
+                    let opacity = tag ? '1' : '0.4'; 
+                    let title = tag ? tag : t.empty_slot;
+                    
+                    html += `<button id="btn-acc-${i}" class="top-acc-btn ${isActive}" onclick="handleAccClick(${i})" title="${title}" style="opacity: ${opacity};">${accNames[i-1]}</button>`;
+                }
+                
+                container.innerHTML = html;
+                container.style.display = 'flex';
+            }
+
+            function TL(str) {
+                if (currentLang === 'zh') return str;
+                const map = {
+                    '🏅 排位賽': '🏅 Ranked', '⏳ 一般模式': '⏳ Casual', '🎯 挑戰': '🎯 Challenge', '🎪 特別活動': '🎪 Special', '📊 總戰績': '📊 Total',
+                    '排位賽': 'Ranked', '一般模式': 'Casual', '挑戰': 'Challenge', '特別活動': 'Special Events',
+                    '搶星大作戰': 'Bounty', '寶石爭奪戰': 'Gem Grab', '金庫攻防戰': 'Heist', 
+                    '亂鬥足球': 'Brawl Ball', '據點搶奪戰': 'Hot Zone', '極限淘汰賽': 'Knockout'
+                };
+                return map[str] || str;
+            }
+
+            function get_wr_js(w, l, d=0) {
+                let total = w + l + d;
+                return total > 0 ? (w/total*100).toFixed(1) + '%' : "0.0%";
+            }
+
+            function togglePage() {
+                activePage = activePage === 'main' ? 'ranked' : 'main';
+                sessionStorage.setItem('activePage', activePage);
+                applyPageState();
+            }
+
+            function applyPageState() {
+                document.getElementById('page-main').classList.toggle('active', activePage === 'main');
+                document.getElementById('page-ranked').classList.toggle('active', activePage === 'ranked');
+                
+                const btn = document.getElementById('btn-page-toggle');
+                const t = i18n[currentLang];
+                if (btn) {
+                    if (activePage === 'main') {
+                        btn.innerHTML = t.btn_ranked;
+                    } else {
+                        btn.innerHTML = t.btn_main;
+                    }
+                }
+            }
+
+            function createRowHtml(label, statObj, isSummary = false, isTotal = false) {
+                const total = statObj.w + statObj.l + statObj.d;
+                let lineClass = isSummary ? 'summary-line' : 'b-line';
+                if (isTotal) lineClass += ' is-total';
+                
+                const displayTxt = statObj.txt || statObj.stats;
+                
+                if (currentDisplayMode === 'data' || total === 0) {
+                    return `<div class="${lineClass}"><span class="b-name">${label}</span><span class="b-data">${displayTxt}</span></div>`;
+                } else {
+                    const wPct = (statObj.w / total) * 100;
+                    const barClass = isSummary ? 'summary-line-bar' + (isTotal ? ' is-total' : '') : 'b-line-bar';
+                    
+                    let trackHtml = `<div class="bar-track">`;
+                    if(statObj.w > 0) trackHtml += `<div class="bar-fill win" style="width: ${wPct}%;"></div>`;
+                    trackHtml += `</div>`;
+                    
+                    return `
+                    <div class="${barClass}">
+                        <div class="bar-label">
+                            <span class="b-name">${label}</span>
+                            <span class="b-data">${displayTxt}</span>
+                        </div>
+                        ${trackHtml}
+                    </div>`;
+                }
+            }
+
+            function renderRankedPage(accData) {
+                const container = document.getElementById('ranked-seasons-container');
+                if (!container) return;
+                container.innerHTML = '';
+                const t = i18n[currentLang];
+                
+                const isSession = (currentView === 'session');
+                const seasonsData = isSession ? accData.ranked_seasons_session : accData.ranked_seasons_all_time;
+                
+                if (!seasonsData || Object.keys(seasonsData).length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align:center; padding: 50px 20px; background-color:#121212; border-radius:12px; margin-top:20px; border:1px dashed #2A323C;">
+                            <div style="font-size:32px; margin-bottom:10px;">${isSession ? '⏳' : '📊'}</div>
+                            <div style="font-size:18px; color:#AAA; font-weight:bold;">${isSession ? t.no_rk_ses : t.no_rk_all}</div>
+                        </div>`;
+                    return;
+                }
+
+                const seasons = Object.keys(seasonsData).sort((a,b) => parseInt(b) - parseInt(a));
+                
+                seasons.forEach(season => {
+                    const sData = seasonsData[season];
+                    
+                    let seasonTitleStr = currentLang === 'zh' ? `第 ${season} 賽季` : `Season ${season}`;
+                    let subBadge = isSession ? 
+                        `<span style="font-size:14px; color:var(--theme-color); padding: 2px 8px; border: 1px solid var(--theme-color); border-radius: 4px; margin-left:10px;">${t.ses_match}</span>` :
+                        ((sData.start_date && sData.end_date) ? ` <span style="font-size:18px; color:#AAAAAA;">(${sData.start_date} ~ ${sData.end_date})</span>` : "");
+                    
+                    let sHtml = `<div class="season-section">
+                        <h2 style="color:var(--theme-color); border-bottom: 2px solid #2A323C; padding-bottom: 10px; margin-top: 30px;">
+                            🏆 ${seasonTitleStr}${subBadge} <span style="font-size:16px; color:#888; float:right; line-height: 28px;">${sData.w}W - ${sData.l}L (${get_wr_js(sData.w, sData.l, sData.d)})</span>
+                        </h2>
+                        <div class="brawler-grid">`;
+                    
+                    const modeColors = { '搶星大作戰': '#01cfff', '寶石爭奪戰': '#9b3df3', '金庫攻防戰': '#d65cd3', '亂鬥足球': '#8ca0df', '據點搶奪戰': '#e33c50', '極限淘汰賽': '#f7831c' };
+                    
+                    TARGET_SIX_MODES.forEach(modeName => {
+                        let totalMatches = 0;
+                        let brawlers = [];
+                        
+                        for (const [bName, bData] of Object.entries(sData.brawlers)) {
+                            if (bData.modes && bData.modes[modeName]) {
+                                let modeData = bData.modes[modeName];
+                                let m = modeData.w + modeData.l + modeData.d;
+                                totalMatches += m;
+                                brawlers.push({ name: bName, w: modeData.w, l: modeData.l, d: modeData.d, matches: m, wr: modeData.w / m });
+                            }
+                        }
+                        
+                        brawlers.forEach(b => b.pr = totalMatches > 0 ? b.matches / totalMatches : 0);
+                        
+                        let color = modeColors[modeName] || '#FFFFFF';
+                        let mHtml = `<div class="brawler-cat" style="border-top: 4px solid ${color};">
+                            <h3 style="color: ${color}; margin-bottom: 5px;">${TL(modeName)}</h3>
+                            <div style="text-align: right; font-size: 14px; color: #888; font-family: Consolas; margin-bottom: 15px;">${t.total_match}${totalMatches}</div>`;
+                            
+                        if (isSession) {
+                            if (brawlers.length === 0) {
+                                mHtml += `<div style="color:#777; text-align:center; padding: 30px 0;">${t.no_hero}</div>`;
+                            } else {
+                                let hSes = t.hero_ses.replace('{n}', totalMatches);
+                                mHtml += `<div style="color:#DDD; font-size:14px; margin: 10px 0 8px 0; font-weight:bold;">${hSes}</div>`;
+                                brawlers.sort((a
