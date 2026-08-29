@@ -348,7 +348,6 @@ def pro_dashboard(tag: str = ""):
     if tag and not tag.startswith("#"):
         tag = "#" + tag
 
-    # UI 顯示狀態切換
     dashboard_display_nav = "grid" if tag else "none"
     dashboard_display = "block" if tag else "none"
     dashboard_display_search = "flex" if tag else "none"
@@ -464,11 +463,12 @@ def pro_dashboard(tag: str = ""):
             .nav-btn:hover { background-color: #2A323C; color: #FFFFFF !important; }
             .nav-btn.active { background-color: #2A323C; color: var(--theme-color); }
             
-            .top-acc-container { display: flex; gap: 6px; background-color: #121212; padding: 4px; border-radius: 10px; border: 1px solid #2A323C; align-items: center; max-width: 330px; overflow-x: auto; white-space: nowrap; scroll-behavior: smooth; }
-            .top-acc-container::-webkit-scrollbar { height: 4px; }
-            .top-acc-container::-webkit-scrollbar-track { background: transparent; }
-            .top-acc-container::-webkit-scrollbar-thumb { background: #3A424C; border-radius: 2px; }
-            .top-acc-container::-webkit-scrollbar-thumb:hover { background: #555555; }
+            /* ✨ 加粗、更明顯的橫向滾動條 */
+            .top-acc-container { display: flex; gap: 6px; background-color: #121212; padding: 4px 4px 6px 4px; border-radius: 10px; border: 1px solid #2A323C; align-items: center; max-width: 330px; overflow-x: auto; white-space: nowrap; scroll-behavior: smooth; }
+            .top-acc-container::-webkit-scrollbar { height: 8px; }
+            .top-acc-container::-webkit-scrollbar-track { background: #1A1F24; border-radius: 4px; }
+            .top-acc-container::-webkit-scrollbar-thumb { background: #666666; border-radius: 4px; }
+            .top-acc-container::-webkit-scrollbar-thumb:hover { background: #AAAAAA; }
             
             .top-acc-btn { flex-shrink: 0; background: transparent; border: none; color: #AAAAAA; padding: 6px 16px; font-weight: bold; cursor: pointer; font-size: 14px; border-radius: 6px; transition: 0.2s; font-family: 'Consolas', monospace; pointer-events: auto; }
             .top-acc-btn:hover:not(.active) { background: #2A323C; color: #FFFFFF; }
@@ -603,7 +603,6 @@ def pro_dashboard(tag: str = ""):
                         <button class="slot-ctrl-btn" onclick="removeSlot()" title="移除帳號欄位">-</button>
                         <button class="slot-ctrl-btn" id="btn-acc-dropdown" onclick="toggleAccDropdown()" title="展開帳號列表" style="font-size: 14px;">▼</button>
                         
-                        <!-- 直立展開面板 -->
                         <div id="acc-expanded-panel" class="acc-expanded-menu">
                             <!-- JS 動態生成直立清單 -->
                         </div>
@@ -821,7 +820,7 @@ def pro_dashboard(tag: str = ""):
                     welcome_t: 'Brawl Tactics에 오신 것을 환영합니다',
                     welcome_d: '강력한 브롤스타즈 e스포츠 데이터 분석 시스템입니다.<br>플레이어 태그(# 포함)를 입력하여 전적을 확인하세요.',
                     trophies: '🏆 트로피', v3v3: '⚔️ 3V3 승리', elo: '🎯 랭크 Elo', tier: '⭐ 랭크',
-                    footer: 'Powered by Render Cloud Environment',
+                    footer: 'Powered 단 Cloud Environment',
                     btn_ranked: '▶ 랭크전으로 전환', btn_main: '◀ 전체 전적',
                     btn_ses: '▶ 이번 세션', btn_all: '▶ 전체 기록',
                     m_bounty: '바운티', m_gem: '젬 그랩', m_heist: '하이스트', m_ball: '브롤 볼', m_hot: '핫 존', m_knock: '녹아웃',
@@ -1076,7 +1075,7 @@ def pro_dashboard(tag: str = ""):
                 if (!container) return;
                 
                 let html = "";
-                let activeSlot = sessionStorage.getItem('active_slot');
+                let activeSlot = sessionStorage.getItem('active_slot') || '1';
                 const t = i18n[currentLang];
 
                 if (currentUrlTag) {
@@ -1303,18 +1302,15 @@ def pro_dashboard(tag: str = ""):
                 
                 const t = i18n[currentLang];
                 
-                // ✨ 新的通靈搜尋：檢查是否包含中日韓文字元
                 const isCJK = /[\u4E00-\u9FFF\u3040-\u30FF\uAC00-\uD7A3]/.test(query);
                 const searchData = appData['current_player']['all_time'];
                 
-                // ✨ 新的通靈搜尋：檢查是否真的有這個英雄
                 const bName = Object.keys(searchData.brawler_details).find(k => k.includes(query.toUpperCase()));
 
                 let resultHtml = "";
                 let modalTitle = "";
                 const modalBox = document.getElementById('modal-content-box');
 
-                // ✨ 如果包含 CJK，或者不是英雄名稱，就一律顯示「地圖勝率」
                 if (isCJK || !bName) {
                     modalTitle = t.modal_tot;
                     if (modalBox) modalBox.style.maxWidth = "500px"; 
@@ -1334,7 +1330,6 @@ def pro_dashboard(tag: str = ""):
                     });
                     resultHtml += `</div>`;
                 } else {
-                    // ✨ 如果是英文且確實是英雄名稱，就顯示該「英雄勝率」
                     if (modalBox) modalBox.style.maxWidth = "500px";
                     const bStats = searchData.brawler_details[bName];
                     modalTitle = currentLang === 'zh' || currentLang === 'jp' ? `【 ${bName} 】(${t.btn_all.replace('▶ ','')})` : `[ ${bName} ] (${t.btn_all.replace('▶ ','')})`;
@@ -1392,7 +1387,6 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('player-name-display').style.display = 'flex';
                 document.getElementById('val-player-name').innerText = displayTitle;
                 
-                // ✨ 儲存玩家剛才的名字
                 if (data.name && currentUrlTag) {
                     localStorage.setItem('saved_name_' + currentUrlTag, data.name);
                 }
