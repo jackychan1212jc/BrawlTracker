@@ -344,7 +344,6 @@ def pro_dashboard(tag: str = ""):
     if not supabase:
         return HTMLResponse("<h1>資料庫連線失敗，請檢查環境變數。</h1>")
 
-    # 完全匿名化處理，無任何硬編碼標籤
     tag = tag.strip().upper()
     if tag and not tag.startswith("#"):
         tag = "#" + tag
@@ -468,9 +467,8 @@ def pro_dashboard(tag: str = ""):
             .top-acc-btn { background: transparent; border: none; border-right: 1px solid #2A323C; color: #AAAAAA; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.2s; font-family: 'Consolas', monospace; height: 100%; pointer-events: auto; }
             .top-acc-btn:last-child { border-right: none; }
             .top-acc-btn:hover:not(.active) { background: #2A323C; color: #FFFFFF; }
-            .top-acc-btn.active { background: var(--theme-color); color: #121212; }
-
-            /* ✨ YT 按鈕美化 CSS */
+            .top-acc-btn.active { background: var(--theme-color); color: #121212; opacity: 1 !important; }
+            
             .yt-link {
                 display: flex;
                 align-items: center;
@@ -596,8 +594,8 @@ def pro_dashboard(tag: str = ""):
             </div>
 
             <div style="position: absolute; right: 5vw; top: 0; bottom: 0; display: flex; align-items: center; gap: 20px; z-index: 10; pointer-events: auto;">
-                <div id="top-acc-container" style="display: none; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px;">
-                    </div>
+                <!-- 帳號切換常駐顯示，讓切換不再繁瑣 -->
+                <div id="top-acc-container" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px;"></div>
 
                 <div class="lang-switch" style="display: flex; background: #121212; border: 1px solid #2A323C; border-radius: 8px; overflow: hidden; height: 36px; pointer-events: auto;">
                     <button id="lang-zh" onclick="setLang('zh')" style="background: var(--theme-color); color: #121212; border: none; padding: 0 15px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">繁</button>
@@ -749,7 +747,9 @@ def pro_dashboard(tag: str = ""):
                     acc1: '一帳', acc2: '二帳', acc3: '三帳',
                     bind_lbl: '綁定 {n} 標籤：', bind_title: '請綁定您的 {n}', bind_desc: '請在上方輸入框填寫玩家標籤，以完成綁定。',
                     clear_cache: '[ 🗑️ 清除本機綁定紀錄 ]',
-                    current_player_lbl: '當前玩家：', btn_reenter: '重新輸入'
+                    current_player_lbl: '當前玩家：', btn_reenter: '重新輸入',
+                    enter_tag_prompt: '請輸入【{n}】的玩家標籤 (包含 #)：',
+                    click_to_bind: '點擊以綁定'
                 },
                 'en': {
                     tag_lbl: 'Player Tag:', track: 'Track', search_ph: '🔍 Search Brawler / Map', search_btn: 'Search',
@@ -772,17 +772,26 @@ def pro_dashboard(tag: str = ""):
                     acc1: 'Main', acc2: 'Alt 1', acc3: 'Alt 2',
                     bind_lbl: 'Bind {n} Tag:', bind_title: 'Bind your {n}', bind_desc: 'Enter your player tag in the input box above to bind.',
                     clear_cache: '[ 🗑️ Clear Local Data ]',
-                    current_player_lbl: 'Current Player:', btn_reenter: 'Change Tag'
+                    current_player_lbl: 'Current Player:', btn_reenter: 'Change Tag',
+                    enter_tag_prompt: 'Enter player tag for 【{n}】 (including #):',
+                    click_to_bind: 'Click to bind'
                 }
             };
 
             function handleAccClick(slot) {
                 let tag = localStorage.getItem('acc' + slot);
-                if (tag && currentUrlTag !== tag) {
-                    window.location.href = '/?tag=' + encodeURIComponent(tag);
+                if (tag) {
+                    if (currentUrlTag !== tag) {
+                        window.location.href = '/?tag=' + encodeURIComponent(tag);
+                    }
                 } else {
-                    sessionStorage.setItem('setting_slot', slot);
-                    window.location.href = '/';
+                    let newTag = prompt(i18n[currentLang].enter_tag_prompt.replace('{n}', i18n[currentLang]['acc'+slot]));
+                    if (newTag) {
+                        newTag = newTag.trim().toUpperCase();
+                        if (!newTag.startsWith('#')) newTag = '#' + newTag;
+                        localStorage.setItem('acc' + slot, newTag);
+                        window.location.href = '/?tag=' + encodeURIComponent(newTag);
+                    }
                 }
             }
 
@@ -793,16 +802,12 @@ def pro_dashboard(tag: str = ""):
                 let tag = inputEl.value.trim().toUpperCase();
                 if (!tag) return;
                 if (!tag.startsWith('#')) tag = '#' + tag;
-
-                let slot = sessionStorage.getItem('setting_slot');
-                if (slot) {
-                    localStorage.setItem('acc' + slot, tag);
-                    sessionStorage.removeItem('setting_slot');
-                } else {
-                    if (!localStorage.getItem('acc1') && !localStorage.getItem('acc2') && !localStorage.getItem('acc3')) {
-                        localStorage.setItem('acc1', tag);
-                    }
+                
+                // 如果一二三帳皆空，搜尋時自動綁定一帳
+                if (!localStorage.getItem('acc1') && !localStorage.getItem('acc2') && !localStorage.getItem('acc3')) {
+                    localStorage.setItem('acc1', tag);
                 }
+                
                 window.location.href = '/?tag=' + encodeURIComponent(tag);
             }
             
@@ -810,20 +815,6 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('track-form').style.display = 'flex';
                 document.getElementById('player-name-display').style.display = 'none';
                 document.getElementById('input-tag').focus();
-            }
-
-            function highlightActiveAcc() {
-                document.getElementById('btn-acc-1').classList.remove('active');
-                document.getElementById('btn-acc-2').classList.remove('active');
-                document.getElementById('btn-acc-3').classList.remove('active');
-
-                if (currentUrlTag) {
-                    for(let i=1; i<=3; i++) {
-                        if (currentUrlTag === localStorage.getItem('acc'+i)) {
-                            document.getElementById('btn-acc-'+i).classList.add('active');
-                        }
-                    }
-                }
             }
 
             function setLang(lang) {
@@ -837,7 +828,7 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('lang-en').style.color = isEn ? '#121212' : '#AAAAAA';
                 
                 applyLangText();
-                if (appData['current_player'] && appData['current_player'].trophies > 0) {
+                if (appData['current_player']) {
                     render();
                 }
             }
@@ -845,17 +836,9 @@ def pro_dashboard(tag: str = ""):
             function applyLangText() {
                 const t = i18n[currentLang];
                 
-                let settingSlot = sessionStorage.getItem('setting_slot');
-                if (settingSlot && !currentUrlTag) {
-                    let accName = t['acc' + settingSlot];
-                    let lblTag = document.getElementById('lbl-tag'); if(lblTag) lblTag.innerText = t.bind_lbl.replace('{n}', accName);
-                    let wTitle = document.getElementById('welcome-title'); if(wTitle) wTitle.innerText = t.bind_title.replace('{n}', accName);
-                    let wDesc = document.getElementById('welcome-desc'); if(wDesc) wDesc.innerHTML = t.bind_desc;
-                } else {
-                    let lblTag = document.getElementById('lbl-tag'); if(lblTag) lblTag.innerText = t.tag_lbl;
-                    let wTitle = document.getElementById('welcome-title'); if(wTitle) wTitle.innerText = t.welcome_t;
-                    let wDesc = document.getElementById('welcome-desc'); if(wDesc) wDesc.innerHTML = t.welcome_d;
-                }
+                let lblTag = document.getElementById('lbl-tag'); if(lblTag) lblTag.innerText = t.tag_lbl;
+                let wTitle = document.getElementById('welcome-title'); if(wTitle) wTitle.innerText = t.welcome_t;
+                let wDesc = document.getElementById('welcome-desc'); if(wDesc) wDesc.innerHTML = t.welcome_d;
                 
                 document.getElementById('input-tag').placeholder = currentLang === 'en' ? '#XXXXXXX' : '#XXXXXXX';
                 document.getElementById('btn-track').innerText = t.track;
@@ -907,28 +890,18 @@ def pro_dashboard(tag: str = ""):
                 
                 const t = i18n[currentLang];
                 const accNames = [t.acc1, t.acc2, t.acc3];
-                let hasAny = false;
                 let html = "";
                 
                 for(let i=0; i<3; i++) {
                     let tag = localStorage.getItem('acc'+(i+1));
-                    if(tag) {
-                        hasAny = true;
-                        let isActive = (currentUrlTag === tag) ? 'active' : '';
-                        html += `<button id="btn-acc-${i+1}" class="top-acc-btn ${isActive}" onclick="handleAccClick(${i+1})" title="${tag}">${accNames[i]}</button>`;
-                    } else {
-                        // 即使未設定，也顯示出來讓玩家可以點擊綁定
-                        html += `<button id="btn-acc-${i+1}" class="top-acc-btn" onclick="handleAccClick(${i+1})" title="點擊設定此快捷鍵" style="opacity: 0.5;">+ ${accNames[i]}</button>`;
-                        hasAny = true;
-                    }
+                    let isActive = (currentUrlTag && currentUrlTag === tag) ? 'active' : '';
+                    let opacity = tag ? '1' : '0.6';
+                    let title = tag ? tag : t.click_to_bind;
+                    
+                    html += `<button id="btn-acc-${i+1}" class="top-acc-btn ${isActive}" onclick="handleAccClick(${i+1})" title="${title}" style="opacity: ${opacity};">${accNames[i]}</button>`;
                 }
                 
-                if (hasAny) {
-                    container.innerHTML = html;
-                    container.style.display = 'flex';
-                } else {
-                    container.style.display = 'none';
-                }
+                container.innerHTML = html;
             }
 
             function TL(str) {
@@ -1171,7 +1144,7 @@ def pro_dashboard(tag: str = ""):
             }
 
             function render() {
-                if (!appData['current_player'] || appData['current_player'].trophies === 0) return;
+                if (!currentUrlTag) return;
 
                 const data = appData['current_player'];
                 const viewData = data[currentView];
@@ -1181,14 +1154,11 @@ def pro_dashboard(tag: str = ""):
                 document.documentElement.style.setProperty('--theme-color', data.color);
                 applyPageState();
                 
-                if (data.name) {
-                    document.getElementById('track-form').style.display = 'none';
-                    document.getElementById('player-name-display').style.display = 'flex';
-                    document.getElementById('val-player-name').innerText = data.name;
-                } else {
-                    document.getElementById('track-form').style.display = 'flex';
-                    document.getElementById('player-name-display').style.display = 'none';
-                }
+                // ✨ 動態顯示玩家名稱，如果 API 失敗沒抓到名字，就 fallback 顯示標籤！
+                let displayTitle = data.name ? data.name : currentUrlTag;
+                document.getElementById('track-form').style.display = 'none';
+                document.getElementById('player-name-display').style.display = 'flex';
+                document.getElementById('val-player-name').innerText = displayTitle;
                 
                 ['btn-session', 'btn-all_time', 'btn-disp-data', 'btn-disp-bar'].forEach(id => {
                     const el = document.getElementById(id);
@@ -1209,20 +1179,25 @@ def pro_dashboard(tag: str = ""):
                 else if (tierStr.includes('LEGENDARY')) tierColor = '#FF3333'; 
                 else if (tierStr.includes('MASTER')) tierColor = '#FF8800'; 
                 
-                document.getElementById('val-trophies').innerHTML = `${data.trophies} <span class="diff">(${data.diff_trophies})</span>`;
-                document.getElementById('val-3v3').innerText = data.victories_3v3;
+                let eloDisplay = data.elo === '0' ? '-' : data.elo;
+                let trophyDisplay = data.trophies === 0 ? '-' : data.trophies;
+                let v3v3Display = data.victories_3v3 === 0 ? '-' : data.victories_3v3;
+                let tierDisplay = data.tier === "UNKNOWN" ? '-' : data.tier;
+
+                document.getElementById('val-trophies').innerHTML = `${trophyDisplay} <span class="diff">(${data.diff_trophies})</span>`;
+                document.getElementById('val-3v3').innerText = v3v3Display;
                 
                 const eloDiffStr = data.diff_elo || '+0';
-                document.getElementById('val-elo').innerHTML = `${data.elo} <span class="diff">(${eloDiffStr})</span>`;
-                document.getElementById('val-elo-rk').innerHTML = `${data.elo} <span class="diff">(${eloDiffStr})</span>`;
+                document.getElementById('val-elo').innerHTML = `${eloDisplay} <span class="diff">(${eloDiffStr})</span>`;
+                document.getElementById('val-elo-rk').innerHTML = `${eloDisplay} <span class="diff">(${eloDiffStr})</span>`;
                 
                 const tierElem = document.getElementById('val-tier');
-                tierElem.innerText = data.tier;
+                tierElem.innerText = tierDisplay;
                 tierElem.style.color = tierColor;
                 tierElem.style.textShadow = `0 0 15px ${tierColor}90`;
                 
                 const tierElemRk = document.getElementById('val-tier-rk');
-                tierElemRk.innerText = data.tier;
+                tierElemRk.innerText = tierDisplay;
                 tierElemRk.style.color = tierColor;
                 tierElemRk.style.textShadow = `0 0 15px ${tierColor}90`;
                 
@@ -1260,7 +1235,6 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('btn-align-right').classList.toggle('active', align === 'flex-end');
             }
 
-            highlightActiveAcc();
             setLang(currentLang);
             setAlignment(currentAlign);
         </script>
