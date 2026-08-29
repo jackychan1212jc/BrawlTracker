@@ -348,6 +348,7 @@ def pro_dashboard(tag: str = ""):
     if tag and not tag.startswith("#"):
         tag = "#" + tag
 
+    # UI 顯示狀態切換
     dashboard_display_nav = "grid" if tag else "none"
     dashboard_display = "block" if tag else "none"
     dashboard_display_search = "flex" if tag else "none"
@@ -463,14 +464,30 @@ def pro_dashboard(tag: str = ""):
             .nav-btn:hover { background-color: #2A323C; color: #FFFFFF !important; }
             .nav-btn.active { background-color: #2A323C; color: var(--theme-color); }
             
-            .top-acc-container { display: flex; gap: 6px; background-color: #121212; padding: 4px; border-radius: 10px; border: 1px solid #2A323C; align-items: center; }
-            .top-acc-btn { background: transparent; border: none; color: #AAAAAA; padding: 6px 16px; font-weight: bold; cursor: pointer; font-size: 14px; border-radius: 6px; transition: 0.2s; font-family: 'Consolas', monospace; pointer-events: auto; }
+            /* ✨ 橫向滾動容器：精準控制寬度，隱藏滾動條但可滑動 */
+            .top-acc-container { display: flex; gap: 6px; background-color: #121212; padding: 4px; border-radius: 10px; border: 1px solid #2A323C; align-items: center; max-width: 330px; overflow-x: auto; white-space: nowrap; scroll-behavior: smooth; }
+            .top-acc-container::-webkit-scrollbar { height: 4px; }
+            .top-acc-container::-webkit-scrollbar-track { background: transparent; }
+            .top-acc-container::-webkit-scrollbar-thumb { background: #3A424C; border-radius: 2px; }
+            .top-acc-container::-webkit-scrollbar-thumb:hover { background: #555555; }
+            
+            .top-acc-btn { flex-shrink: 0; background: transparent; border: none; color: #AAAAAA; padding: 6px 16px; font-weight: bold; cursor: pointer; font-size: 14px; border-radius: 6px; transition: 0.2s; font-family: 'Consolas', monospace; pointer-events: auto; }
             .top-acc-btn:hover:not(.active) { background: #2A323C; color: #FFFFFF; }
             .top-acc-btn.active { background: var(--theme-color); color: #121212; opacity: 1 !important; }
 
-            /* ✨ 帳號增減按鈕 CSS */
+            /* ✨ 右側操作按鈕：+ / - / ▼ */
             .slot-ctrl-btn { background-color: #121212; color: #AAAAAA; border: 1px solid #2A323C; border-radius: 8px; width: 32px; height: 36px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; pointer-events: auto; box-sizing: border-box; }
             .slot-ctrl-btn:hover { background-color: #2A323C; color: var(--theme-color); border-color: var(--theme-color); }
+
+            /* ✨ 展開菜單：直立排列，顯示玩家名稱 */
+            .acc-expanded-menu { display: none; position: absolute; top: 48px; right: 0; background-color: #1A1F24; border: 1px solid #2A323C; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 200; width: 280px; max-height: 400px; overflow-y: auto; }
+            .acc-expanded-menu::-webkit-scrollbar { width: 6px; }
+            .acc-expanded-menu::-webkit-scrollbar-thumb { background: #2A323C; border-radius: 3px; }
+            .acc-menu-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #2A323C; cursor: pointer; transition: 0.2s; color: #AAAAAA; font-family: 'Consolas', monospace; font-size: 14px; }
+            .acc-menu-item:hover { background-color: #2A323C; color: #FFFFFF; }
+            .acc-menu-item:last-child { border-bottom: none; }
+            .acc-menu-item.active { border-left: 4px solid var(--theme-color); background-color: rgba(0,255,170,0.05); color: var(--theme-color); padding-left: 12px; }
+            .acc-menu-name { font-weight: bold; color: #FFFFFF; font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 14px; }
 
             .yt-link { display: flex; align-items: center; gap: 8px; background-color: #1A1F24; border: 1px solid #2A323C; padding: 6px 14px; border-radius: 20px; color: #DDDDDD; text-decoration: none; font-family: 'Segoe UI', Tahoma, sans-serif; font-weight: bold; font-size: 14px; transition: all 0.3s ease; pointer-events: auto; }
             .yt-link:hover { background-color: #2A323C; color: #FFFFFF; border-color: #FF0000; box-shadow: 0 0 12px rgba(255, 0, 0, 0.4); transform: translateY(-1px); }
@@ -579,15 +596,21 @@ def pro_dashboard(tag: str = ""):
                     </a>
                 </div>
 
-                <!-- ✨ 動態帳號區塊：加入了左右兩側的 +/- 控制按鈕 -->
+                <!-- ✨ 動態帳號區塊：加入了左右兩側的 +/- 控制按鈕與 ▼ 下拉按鈕 -->
                 <div style="pointer-events: auto; display: flex; align-items: center; gap: 8px;">
                     <div class="top-acc-container" id="top-acc-container">
-                        <!-- JS 動態生成按鈕 -->
+                        <!-- JS 動態生成按鈕 (最多顯示 4 個，超過會產生橫向滾動) -->
                     </div>
                     
-                    <div style="display: flex; gap: 4px;">
+                    <div style="display: flex; gap: 4px; position: relative;">
                         <button class="slot-ctrl-btn" onclick="addSlot()" title="新增帳號欄位">+</button>
                         <button class="slot-ctrl-btn" onclick="removeSlot()" title="移除帳號欄位">-</button>
+                        <button class="slot-ctrl-btn" id="btn-acc-dropdown" onclick="toggleAccDropdown()" title="展開帳號列表" style="font-size: 14px;">▼</button>
+                        
+                        <!-- ✨ 直立展開面板 -->
+                        <div id="acc-expanded-panel" class="acc-expanded-menu">
+                            <!-- JS 動態生成直立清單 -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -826,14 +849,12 @@ def pro_dashboard(tag: str = ""):
             // ✨ 動態帳號命名系統
             function getSlotName(index) {
                 if (index === 1) {
-                    if (currentLang === 'zh') return 'Main';
-                    if (currentLang === 'en') return 'Main';
+                    if (currentLang === 'zh' || currentLang === 'en') return 'Main';
                     if (currentLang === 'jp') return 'メイン';
                     if (currentLang === 'kr') return '본계정';
                 }
                 let altNum = index - 1;
-                if (currentLang === 'zh') return 'Alt ' + altNum;
-                if (currentLang === 'en') return 'Alt ' + altNum;
+                if (currentLang === 'zh' || currentLang === 'en') return 'Alt ' + altNum;
                 if (currentLang === 'jp') return 'サブ ' + altNum;
                 if (currentLang === 'kr') return '부계정 ' + altNum;
             }
@@ -851,8 +872,8 @@ def pro_dashboard(tag: str = ""):
 
             function removeSlot() {
                 if (slotCount > MIN_SLOTS) {
-                    // 刪除時順便清除該格的記憶
                     localStorage.removeItem('acc' + slotCount); 
+                    localStorage.removeItem('saved_name_' + localStorage.getItem('acc'+slotCount));
                     if (sessionStorage.getItem('active_slot') == slotCount) {
                         sessionStorage.removeItem('active_slot');
                     }
@@ -862,6 +883,64 @@ def pro_dashboard(tag: str = ""):
                 } else {
                     alert(i18n[currentLang].min_alert);
                 }
+            }
+
+            // ✨ 展開面板邏輯
+            function toggleAccDropdown() {
+                const panel = document.getElementById('acc-expanded-panel');
+                if (panel.style.display === 'block') {
+                    panel.style.display = 'none';
+                } else {
+                    renderAccDropdown();
+                    panel.style.display = 'block';
+                }
+            }
+
+            // 點擊外部關閉選單
+            document.addEventListener('click', function(event) {
+                const panel = document.getElementById('acc-expanded-panel');
+                const btn = document.getElementById('btn-acc-dropdown');
+                if (panel && panel.style.display === 'block') {
+                    if (!panel.contains(event.target) && event.target !== btn) {
+                        panel.style.display = 'none';
+                    }
+                }
+            });
+
+            function renderAccDropdown() {
+                const panel = document.getElementById('acc-expanded-panel');
+                if (!panel) return;
+                
+                let html = "";
+                let activeSlot = sessionStorage.getItem('active_slot') || '1';
+                if (currentUrlTag) {
+                    for(let i=1; i<=slotCount; i++) {
+                        if (localStorage.getItem('acc'+i) === currentUrlTag) {
+                            activeSlot = i.toString(); break;
+                        }
+                    }
+                }
+
+                for(let i=1; i<=slotCount; i++) {
+                    let tag = localStorage.getItem('acc'+i);
+                    let btnName = getSlotName(i);
+                    let isActive = (activeSlot === i.toString() && (tag === currentUrlTag || !currentUrlTag)) ? 'active' : '';
+                    
+                    let displayName = "—"; 
+                    let displayColor = "#555";
+                    
+                    if (tag) {
+                        let savedName = localStorage.getItem('saved_name_' + tag);
+                        displayName = savedName ? savedName : tag;
+                        displayColor = "#FFFFFF";
+                    }
+                    
+                    html += `<div class="acc-menu-item ${isActive}" onclick="handleAccClick(${i}); toggleAccDropdown();">
+                                <span>${btnName}</span>
+                                <span class="acc-menu-name" style="color: ${displayColor}">${displayName}</span>
+                             </div>`;
+                }
+                panel.innerHTML = html;
             }
 
             function handleAccClick(slotIndex) {
@@ -894,7 +973,6 @@ def pro_dashboard(tag: str = ""):
                 }
             }
 
-            // ✨ 自動將新輸入的標籤存入第一個空位或當前活躍空位
             document.getElementById('track-form').addEventListener('submit', function(event) {
                 let inputEl = document.getElementById('input-tag');
                 if(!inputEl) return;
@@ -907,15 +985,10 @@ def pro_dashboard(tag: str = ""):
                 if (activeSlot) {
                     localStorage.setItem('acc' + activeSlot, tag);
                 } else {
-                    // 檢查是否已經存過
                     let isSaved = false;
                     for(let i=1; i<=slotCount; i++) {
-                        if (localStorage.getItem('acc'+i) === tag) {
-                            isSaved = true;
-                            break;
-                        }
+                        if (localStorage.getItem('acc'+i) === tag) { isSaved = true; break; }
                     }
-                    // 沒存過就找第一個空位塞進去
                     if(!isSaved) {
                         for(let i=1; i<=slotCount; i++) {
                             if (!localStorage.getItem('acc'+i)) {
@@ -1007,16 +1080,15 @@ def pro_dashboard(tag: str = ""):
                 renderTopAccButtons();
             }
 
-            // ✨ 動態渲染 1 到 10 個按鈕
+            // ✨ 動態渲染 1 到 10 個橫向滾動按鈕
             function renderTopAccButtons() {
                 const container = document.getElementById('top-acc-container');
                 if (!container) return;
                 
                 let html = "";
-                let activeSlot = sessionStorage.getItem('active_slot');
+                let activeSlot = sessionStorage.getItem('active_slot') || '1';
                 const t = i18n[currentLang];
 
-                // 確認當前正在觀看的 tag 對應到哪一個按鈕
                 if (currentUrlTag) {
                     for(let i=1; i<=slotCount; i++) {
                         let savedTag = localStorage.getItem('acc'+i);
@@ -1070,7 +1142,7 @@ def pro_dashboard(tag: str = ""):
                         '搶星大作戰': '바운티', '寶石爭奪戰': '젬 그랩', '金庫攻防戰': '하이스트', 
                         '亂鬥足球': '브롤 볼', '據點搶奪戰': '핫 존', '極限淘汰賽': '녹아웃',
                         '單人生死鬥': '솔로 쇼다운', '雙人生死鬥': '듀오 쇼다운', '亂鬥擂台': '듀얼',
-                        '積分爭奪戰': '와이프아웃', '亂鬥籃球': '바스켓 브롤', '礦車競速': '페이로드',
+                        '積分爭奪戰': '와이프아웃', '亂鬥籃球': '바스켓 브롤', '礦車競 세': '페이로드',
                         '團隊首領戰': '보스전', '機甲入侵': '로보 럼블', '巨型獵場': '빅 게임',
                         '亂鬥競技場': '브롤 아레나'
                     }
@@ -1327,6 +1399,11 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('player-name-display').style.display = 'flex';
                 document.getElementById('val-player-name').innerText = displayTitle;
                 
+                // ✨ 儲存玩家剛才的名字
+                if (data.name && currentUrlTag) {
+                    localStorage.setItem('saved_name_' + currentUrlTag, data.name);
+                }
+
                 ['btn-session', 'btn-all_time', 'btn-disp-data', 'btn-disp-bar'].forEach(id => {
                     const el = document.getElementById(id);
                     if(!el) return;
