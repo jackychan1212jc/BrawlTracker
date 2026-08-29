@@ -348,7 +348,6 @@ def pro_dashboard(tag: str = ""):
     if tag and not tag.startswith("#"):
         tag = "#" + tag
 
-    # UI 顯示狀態切換
     dashboard_display_nav = "grid" if tag else "none"
     dashboard_display = "block" if tag else "none"
     dashboard_display_search = "flex" if tag else "none"
@@ -472,7 +471,6 @@ def pro_dashboard(tag: str = ""):
             .yt-link { display: flex; align-items: center; gap: 8px; background-color: #1A1F24; border: 1px solid #2A323C; padding: 6px 14px; border-radius: 20px; color: #DDDDDD; text-decoration: none; font-family: 'Segoe UI', Tahoma, sans-serif; font-weight: bold; font-size: 14px; transition: all 0.3s ease; pointer-events: auto; }
             .yt-link:hover { background-color: #2A323C; color: #FFFFFF; border-color: #FF0000; box-shadow: 0 0 12px rgba(255, 0, 0, 0.4); transform: translateY(-1px); }
 
-            /* ✨ 全新語言下拉選單設計 */
             .lang-dropdown { position: relative; display: inline-block; pointer-events: auto; }
             .lang-dropbtn { background-color: #121212; color: #AAAAAA; padding: 8px 15px; font-size: 15px; border: 1px solid #2A323C; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Consolas', monospace; display: flex; align-items: center; gap: 5px; transition: 0.3s; }
             .lang-dropbtn:hover { border-color: var(--theme-color); color: #FFFFFF; }
@@ -587,7 +585,6 @@ def pro_dashboard(tag: str = ""):
                 </div>
             </div>
 
-            <!-- ✨ 全新的下拉式語言選單 -->
             <div style="position: absolute; right: 5vw; z-index: 100; pointer-events: auto;">
                 <div class="lang-dropdown">
                     <button class="lang-dropbtn" id="current-lang-btn">🌐 繁體中文 ▼</button>
@@ -702,16 +699,11 @@ def pro_dashboard(tag: str = ""):
         </div>
 
         <script>
-            // ==========================================
-            // ⚙️ 帳號配置區 (純粹留空，由 LocalStorage 儲存)
-            // ✨ 加入了日文與韓文的按鈕翻譯支援
-            // ==========================================
             const MY_ACCOUNTS = [
                 { nameZh: 'Main', nameEn: 'Main', nameJp: 'メイン', nameKr: '본계정' },
                 { nameZh: 'Alt 1', nameEn: 'Alt 1', nameJp: 'サブ 1', nameKr: '부계정 1' },
                 { nameZh: 'Alt 2', nameEn: 'Alt 2', nameJp: 'サブ 2', nameKr: '부계정 2' }
             ];
-            // ==========================================
 
             let appData = __APP_DATA_HERE__;
             window.appData = appData;
@@ -733,7 +725,6 @@ def pro_dashboard(tag: str = ""):
             
             const TARGET_SIX_MODES = ['搶星大作戰', '寶石爭奪戰', '金庫攻防戰', '亂鬥足球', '據點搶奪戰', '極限淘汰賽'];
 
-            // ✨ i18n 完整四國語言翻譯字典
             const i18n = {
                 'zh': {
                     tag_lbl: '請輸入玩家標籤：', track: '追蹤', search_ph: '🔍 搜尋英雄、地圖', search_btn: '查詢',
@@ -881,7 +872,6 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('input-tag').focus();
             }
 
-            // ✨ 修改後的語言切換系統，支援下拉選單顯示更新
             function setLang(lang) {
                 currentLang = lang;
                 localStorage.setItem('lang', lang);
@@ -998,7 +988,6 @@ def pro_dashboard(tag: str = ""):
                 container.innerHTML = html;
             }
 
-            // ✨ 強化版的四國語言雙向轉換系統
             function TL(str) {
                 if (currentLang === 'zh') return str;
                 const map = {
@@ -1006,19 +995,31 @@ def pro_dashboard(tag: str = ""):
                         '🏅 排位賽': '🏅 Ranked', '⏳ 一般模式': '⏳ Casual', '🎯 挑戰': '🎯 Challenge', '🎪 特別活動': '🎪 Special', '📊 總戰績': '📊 Total',
                         '排位賽': 'Ranked', '一般模式': 'Casual', '挑戰': 'Challenge', '特別活動': 'Special Events',
                         '搶星大作戰': 'Bounty', '寶石爭奪戰': 'Gem Grab', '金庫攻防戰': 'Heist', 
-                        '亂鬥足球': 'Brawl Ball', '據點搶奪戰': 'Hot Zone', '極限淘汰賽': 'Knockout'
+                        '亂鬥足球': 'Brawl Ball', '據點搶奪戰': 'Hot Zone', '極限淘汰賽': 'Knockout',
+                        '單人生死鬥': 'Solo Showdown', '雙人生死鬥': 'Duo Showdown', '亂鬥擂台': 'Duels',
+                        '積分爭奪戰': 'Wipeout', '亂鬥籃球': 'Basket Brawl', '礦車競速': 'Payload',
+                        '團隊首領戰': 'Boss Fight', '機甲入侵': 'Robo Rumble', '巨型獵場': 'Big Game',
+                        '亂鬥競技場': 'Brawl Arena'
                     },
                     'jp': {
                         '🏅 排位賽': '🏅 ランク戦', '⏳ 一般模式': '⏳ ノーマル', '🎯 挑戰': '🎯 チャレンジ', '🎪 特別活動': '🎪 特別イベント', '📊 總戰績': '📊 総合戦績',
                         '排位賽': 'ランク戦', '一般模式': 'ノーマル', '挑戰': 'チャレンジ', '特別活動': '特別イベント',
                         '搶星大作戰': '賞金稼ぎ', '寶石爭奪戰': 'エメラルドハント', '金庫攻防戰': '強奪', 
-                        '亂鬥足球': 'ブロストライカー', '據點搶奪戰': 'ホットゾーン', '極限淘汰賽': 'ノックアウト'
+                        '亂鬥足球': 'ブロストライカー', '據點搶奪戰': 'ホットゾーン', '極限淘汰賽': 'ノックアウト',
+                        '單人生死鬥': 'ソロ バトルロイヤル', '雙人生死鬥': 'デュオ バトルロイヤル', '亂鬥擂台': 'デュエル',
+                        '積分爭奪戰': 'ワイプアウト', '亂鬥籃球': 'バスケバトル', '礦車競速': 'ペイロード',
+                        '團隊首領戰': 'ボスファイト', '機甲入侵': 'ロボットファイト', '巨型獵場': 'ビッグゲーム',
+                        '亂鬥競技場': 'ブロウルアリーナ'
                     },
                     'kr': {
                         '🏅 排位賽': '🏅 랭크전', '⏳ 一般模式': '⏳ 일반 모드', '🎯 挑戰': '🎯 챌린지', '🎪 特別活動': '🎪 특수 이벤트', '📊 總戰績': '📊 전체 전적',
                         '排位賽': '랭크전', '一般模式': '일반 모드', '挑戰': '챌린지', '特別活動': '특수 이벤트',
                         '搶星大作戰': '바운티', '寶石爭奪戰': '젬 그랩', '金庫攻防戰': '하이스트', 
-                        '亂鬥足球': '브롤 볼', '據點搶奪戰': '핫 존', '極限淘汰賽': '녹아웃'
+                        '亂鬥足球': '브롤 볼', '據點搶奪戰': '핫 존', '極限淘汰賽': '녹아웃',
+                        '單人生死鬥': '솔로 쇼다운', '雙人生死鬥': '듀오 쇼다운', '亂鬥擂台': '듀얼',
+                        '積分爭奪戰': '와이프아웃', '亂鬥籃球': '바스켓 브롤', '礦車競速': '페이로드',
+                        '團隊首領戰': '보스전', '機甲入侵': '로보 럼블', '巨型獵場': '빅 게임',
+                        '亂鬥競技場': '브롤 아레나'
                     }
                 };
                 return (map[currentLang] && map[currentLang][str]) || str;
@@ -1348,7 +1349,7 @@ def pro_dashboard(tag: str = ""):
                 document.getElementById('btn-align-right').classList.toggle('active', align === 'flex-end');
             }
 
-            // 初始化：確保頁面載入時能正確顯示預設語言的下拉選單文字
+            // 確保網頁載入時就套用目前的語言設定
             setLang(currentLang);
             setAlignment(currentAlign);
         </script>
